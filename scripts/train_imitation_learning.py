@@ -251,6 +251,7 @@ class GazeboEnv(Node):
         self.state_reset = np.zeros(22)
         self.goal_x = 1.8
         self.goal_y = -1.8
+        self.rate = self.create_rate(1.0 / self.TIME_DELTA)
 
     def step(self, action, step, max_episode_steps):
         global lidar_data
@@ -281,8 +282,8 @@ class GazeboEnv(Node):
             self.get_logger().info("/unpause_physics service call failed")
 
         # propagate state for TIME_DELTA seconds
-        time.sleep(self.TIME_DELTA)
-
+        # time.sleep(self.TIME_DELTA)
+        self.rate.sleep()
         while not self.pause.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         try:
@@ -295,15 +296,20 @@ class GazeboEnv(Node):
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
-        reward = 1/dist
-
+        mind = np.amin(self.next_obs[:20])
         if(dist <= 0.35):
             done = True
-            reward = 10
-        elif(np.amin(self.next_obs[:20]) < 0.25):
+            reward = 100
+        elif mind < 0.11: #could add collision listener but this p good
+            reward = -10
+            done = True
+            self.get_logger().info('Collision!')
+        elif mind < 0.25:
             reward = -1
+            self.get_logger().info('Close to collision!')
             done = False
         else:
+            reward = dist
             done = False
 
         # time out
