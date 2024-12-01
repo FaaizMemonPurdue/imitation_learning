@@ -792,31 +792,7 @@ class Joy_subscriber(Node):
         axes[0] = -data.axes[0]
         axes[1] = -data.axes[1] 
         axes[2] = -data.axes[3]
-
-class Commander(Node):
-
-    def __init__(self):
-        super().__init__('commander')
-        self.wheel_vel1 = np.array([0,0,0,0], float)
-        self.publisher_robot1 = self.create_publisher(Float64MultiArray, '/robot_1/forward_velocity_controller/commands', 10)
-
-        self.timer_period = 0.005
-        self.L = 0.125 # distance from the robot center to the wheel
-        self.Rw = 0.03 # Radius ot the wheel
-
-        self.timer = self.create_timer(self.timer_period, self.timer_callback)
-
-    def timer_callback(self):
-        global axes
-
-        self.wheel_vel1[0] = (axes[0]*math.sin(math.pi/4            ) + axes[1]*math.cos(math.pi/4            ) + self.L*axes[2])/self.Rw
-        self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2) + self.L*axes[2])/self.Rw
-        self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)   + self.L*axes[2])/self.Rw
-        self.wheel_vel1[3] = (axes[0]*math.sin(math.pi/4 - math.pi/2) + axes[1]*math.cos(math.pi/4 - math.pi/2) + self.L*axes[2])/self.Rw
-
-        array_forPublish1 = Float64MultiArray(data=self.wheel_vel1)    
-        #rclpy.logging._root_logger.info(f"wheel vel : {self.wheel_vel}")
-        self.publisher_robot1.publish(array_forPublish1)      
+    
 
 class Lidar_subscriber(Node):
 
@@ -844,7 +820,6 @@ if __name__ == '__main__':
     get_modelstate = Get_modelstate()
     joy_subscriber = Joy_subscriber()
     lidar_subscriber = Lidar_subscriber()
-    commander = Commander()
 
     # state space dimension
     state_dim = 20
