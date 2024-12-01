@@ -933,12 +933,10 @@ class Lidar_subscriber(Node):
     def listener_callback(self, data):
         global lidar_data
         # https://docs.ros.org/en/api/sensor_msgs/html/msg/LaserScan.html
-        #gz_env.get_logger().info(f"len : {len(data.ranges)}")
         for i in range(20):
             lidar_data[i] = data.ranges[18*i]
             if(lidar_data[i] > 7.465):
                 lidar_data[i] = 7.465
-        #gz_env.get_logger().info(f"lidar_data : {lidar_data}")
 
 # Evaluate agent with deterministic policy π
 def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: bool=False) -> Union[Tuple[List[List[float]], Dict[str, Tensor]], List[List[float]]]:
