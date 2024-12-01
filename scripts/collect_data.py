@@ -875,7 +875,7 @@ if __name__ == '__main__':
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
                 if done_cnt >= 40:
                      break
-                if reward == -1: #fix to -10
+                if reward == -10: #fix to -10
                     gz_env.get_logger().info("collision")
             else: #timeout
                 gz_env.get_logger().info("timeout")
