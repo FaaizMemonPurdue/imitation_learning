@@ -296,10 +296,12 @@ class GazeboEnv(Node):
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
+        reward = 1/dist
         mind = np.amin(self.next_obs[:20])
         if(dist <= 0.35):
             done = True
             reward = 100
+            self.get_logger().info('Goal reached!')
         elif mind < 0.11: #could add collision listener but this p good
             reward = -10
             done = True
@@ -309,7 +311,6 @@ class GazeboEnv(Node):
             self.get_logger().info('Close to collision!')
             done = False
         else:
-            reward = dist
             done = False
 
         # time out
