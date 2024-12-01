@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy, LaserScan
-from gazebo_msgs.msg import EntityState, ModelState, ModelStates, LinkStates
+from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
@@ -13,7 +13,6 @@ import threading
 import numpy as np
 import time
 import copy
-import torch
 import h5py
 import os
 

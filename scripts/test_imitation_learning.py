@@ -2,8 +2,8 @@
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Joy, LaserScan
-from gazebo_msgs.msg import EntityState, ModelState, ModelStates, LinkStates
+from sensor_msgs.msg import LaserScan
+from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
@@ -13,24 +13,17 @@ import threading
 import numpy as np
 import time
 import copy
-from os.path import join
-from shutil import copyfile # keep track of generations
-import random
 import torch
 from torch import optim
 from torch import Tensor
-from torch.utils.data import DataLoader
 from typing import Dict, List, Tuple, Union
 import h5py
 import os
 import yaml
-from tqdm import tqdm
 
 from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, \
-                   RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
-from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
-from utils import cycle, flatten_list_dicts, lineplot
+                   RewardRelabeller, TwinCritic, create_target_network
 
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
@@ -942,7 +935,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
   trajectories = []
   #if render:
   #    env.render()
-  max_episode_steps = 300
+  max_episode_steps = 100
 
   with torch.inference_mode():
     for _ in range(num_episodes):
@@ -1017,7 +1010,7 @@ if __name__ == '__main__':
     expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
     state_size = 23
     action_size = 3
-    max_episode_steps = 300
+    max_episode_steps = 100
 
     # Set up agent
     actor = SoftActor(state_size, action_size, cfg['reinforcement']['actor'])

@@ -1,4 +1,4 @@
-from utils import cycle, flatten_list_dicts, lineplot
+from utils import lineplot
 import os
 
 metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], test_returns_normalized=[], update_steps=[], predicted_rewards=[], alphas=[], entropies=[], Q_values=[])
