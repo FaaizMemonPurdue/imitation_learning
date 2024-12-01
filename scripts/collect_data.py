@@ -849,7 +849,6 @@ if __name__ == '__main__':
 
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
-    rate = gz_env.create_rate(2)
 
     try:
         while rclpy.ok():
