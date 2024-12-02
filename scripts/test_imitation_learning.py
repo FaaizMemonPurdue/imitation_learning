@@ -7,6 +7,7 @@ from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
+from rclpy import Parameter
 
 import math
 import threading
@@ -41,7 +42,9 @@ class GazeboEnv(Node):
 
     def __init__(self, absorbing: bool, load_data: bool=False):
         super().__init__('env')
-
+        # self.declare_parameter('use_sim_time', True)
+        # simt = Parameter('use_sim_time', Parameter.Type.BOOL)
+        self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
         self.absorbing = absorbing
 
         if load_data:
@@ -66,7 +69,7 @@ class GazeboEnv(Node):
         self.req = Empty.Request
 
         self.publisher_robot_vel1 = self.create_publisher(Float64MultiArray, '/robot_1/forward_velocity_controller/commands', 10)
-        
+        self.publisher_tracker = self.create_publisher(Float64MultiArray, '/stepspd', 10)
         self.set_box1_state = EntityState()
         self.set_box1_state.name = "box1"
         self.set_box1_state.pose.position.x = 0.0
@@ -240,7 +243,8 @@ class GazeboEnv(Node):
         #self.done = False
         #self.actions = np.array([0,0,0], float)
 
-        self.TIME_DELTA = 0.2
+        self.TIME_DELTA = 0.01
+        self.rate = self.create_rate(1.0 / self.TIME_DELTA)
         self.timeouts = False
         self.obs = np.zeros(22)
         self.next_obs = np.zeros(22)
@@ -267,7 +271,7 @@ class GazeboEnv(Node):
         #gz_env.publisher_vel1.publish(gz_env.vel_msg1)
         array_forPublish1_vel = Float64MultiArray(data=self.wheel_vel1)  
         self.publisher_robot_vel1.publish(array_forPublish1_vel)
-
+        self.publisher_tracker.publish(array_forPublish1_vel)
         #'''
         while not gz_env.unpause.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
@@ -277,8 +281,8 @@ class GazeboEnv(Node):
             self.get_logger().info("/unpause_physics service call failed")
 
         # propagate state for TIME_DELTA seconds
-        time.sleep(self.TIME_DELTA)
-
+        # time.sleep(self.TIME_DELTA)
+        self.rate.sleep()
         while not self.pause.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         try:
