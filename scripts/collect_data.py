@@ -877,6 +877,7 @@ if __name__ == '__main__':
             time_step += 1
             if not done and time_step < max_ep_len:
                 continue
+            i_episode += 1
             if done:
                 done_cnt += 1
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
@@ -886,6 +887,7 @@ if __name__ == '__main__':
                     gz_env.get_logger().info("collision")
             if time_out: #timeout
                 gz_env.get_logger().info("timeout")
+            gz_env.get_logger().info(f"Episode:{i_episode}, Reward:{reward}, Done:{done}, Time_out:{time_out}")
             time_step = 0
             gz_env.reset()
             
