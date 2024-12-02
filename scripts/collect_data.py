@@ -218,7 +218,7 @@ class GazeboEnv(Node):
         self.goal_y = -1.8
 
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
-    def step(self):
+    def step(self, step, max_episode_steps):
         global axes, lidar_data, robot_pose
 
         self.actions[:] = axes[:]
@@ -256,13 +256,14 @@ class GazeboEnv(Node):
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
-        reward = 1/dist
+        reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
         if(dist <= 0.35):
-            done = True
-            reward = 100
+            done = True 
+            reward = 500 
+            self.get_logger().info('Goal reached!')
         elif mind < 0.11: #could add collision listener but this p good
-            reward = -10
+            reward = -30
             done = True
             self.get_logger().info('Collision!')
         elif mind < 0.25:
@@ -271,7 +272,13 @@ class GazeboEnv(Node):
             done = False
         else:
             done = False
+        reward -= np.exp(step / max_episode_steps) * 50
 
+        # time out
+        if step >= max_episode_steps:
+            self.get_logger().info("time out")
+            done = True
+            self.timeouts = True
         return self.actions, self.next_obs, self.obs, reward, done, self.timeouts
 
     def reset(self):
@@ -853,7 +860,7 @@ if __name__ == '__main__':
     try:
         while rclpy.ok():
 
-            action, next_state, state, reward, done, time_out = gz_env.step()
+            action, next_state, state, reward, done, time_out = gz_env.step(time_step, max_ep_len)
             action_list.append([action[0], action[1], action[2]])
             next_state_list.append([next_state[0], next_state[1], next_state[2], next_state[3],
                                     next_state[4], next_state[5], next_state[6], next_state[7],
@@ -875,9 +882,9 @@ if __name__ == '__main__':
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
                 if done_cnt >= 40:
                      break
-                if reward == -10: #fix to -10
+                if reward == -30:
                     gz_env.get_logger().info("collision")
-            else: #timeout
+            if time_out: #timeout
                 gz_env.get_logger().info("timeout")
             time_step = 0
             gz_env.reset()
