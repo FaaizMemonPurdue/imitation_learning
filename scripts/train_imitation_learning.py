@@ -312,8 +312,8 @@ class GazeboEnv(Node):
             done = False
         else:
             done = False
-        reward -= np.exp(step / max_episode_steps) * 50 # punish for taking too long by up to 50 (at timeout)
-
+        reward -= (step / max_episode_steps) * 50 # punish for taking too long by up to 50 (at timeout)
+        # exponential penalty was accumulating too much with time, so I added a linear decay to the reward
         # time out
         if step >= max_episode_steps:
             self.get_logger().info("time out")
