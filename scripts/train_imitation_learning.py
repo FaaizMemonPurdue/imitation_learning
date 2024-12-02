@@ -965,7 +965,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
             actions.append(action)
           rewards.append(reward)
           state = next_state
-      returns.append(sum(rewards))
+      returns.append(-sum(rewards))
 
       if return_trajectories:
         # Collect trajectory data (including terminal signal, which may be needed for offline learning)
