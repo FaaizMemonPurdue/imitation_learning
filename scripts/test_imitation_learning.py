@@ -295,17 +295,40 @@ class GazeboEnv(Node):
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
-        reward = 1/dist
+        # reward = 1/dist
 
+        # if(dist <= 0.35):
+        #     done = True
+        #     reward = 10
+        # elif(np.amin(self.next_obs[:20]) < 0.25):
+        #     reward = -1
+        #     done = False
+        # else:
+        #     done = False
+
+        # # time out
+        # if step >= max_episode_steps:
+        #     self.get_logger().info("time out")
+        #     done = True
+        reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
+        mind = np.amin(self.next_obs[:20])
         if(dist <= 0.35):
+            done = True 
+            reward = 500 
+            self.get_logger().info('Goal reached!')
+        elif mind < 0.11: #could add collision listener but this p good
+            reward = -30
             done = True
-            reward = 10
-        elif(np.amin(self.next_obs[:20]) < 0.25):
+            self.get_logger().info('Collision!')
+        elif mind < 0.25:
             reward = -1
+            self.get_logger().info('Close to collision!')
             done = False
         else:
             done = False
-
+        # reward -= np.exp(step / max_episode_steps) * 50  # punish for taking too long by up to 50 (at timeout)
+        reward -= (step / max_episode_steps) * 50
+        # exponential penalty was accumulating too much with time, so I added a linear decay to the reward
         # time out
         if step >= max_episode_steps:
             self.get_logger().info("time out")
