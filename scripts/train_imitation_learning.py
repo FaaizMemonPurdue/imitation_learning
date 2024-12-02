@@ -319,7 +319,9 @@ class GazeboEnv(Node):
         if step >= max_episode_steps:
             self.get_logger().info("time out")
             done = True
-
+        
+        if done:
+            reward -= np.exp(step / max_episode_steps) * 50
         next_obs_re = torch.tensor(self.next_obs, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)

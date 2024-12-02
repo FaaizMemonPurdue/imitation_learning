@@ -272,13 +272,16 @@ class GazeboEnv(Node):
             done = False
         else:
             done = False
-        reward -= np.exp(step / max_episode_steps) * 50
+        reward -= (step / max_episode_steps) * 50
 
         # time out
         if step >= max_episode_steps:
             self.get_logger().info("time out")
             done = True
             self.timeouts = True
+        
+        if done:
+            reward -= np.exp(step / max_episode_steps) * 50
         return self.actions, self.next_obs, self.obs, reward, done, self.timeouts
 
     def reset(self):
