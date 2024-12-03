@@ -945,6 +945,7 @@ if __name__ == '__main__':
             hf.create_dataset('reltimes', data=reltime_list)
             hf.create_dataset('collisions', data=collision_list)
             hf.create_dataset('spread_list', data=spread_list)
+            hf.create_dataset('time', data=time_list)
 
 
     except KeyboardInterrupt:
