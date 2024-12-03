@@ -886,11 +886,19 @@ if __name__ == '__main__':
             i_episode += 1
             if done:
                 done_cnt += 1
+                if done_cnt % 50 == 0:
+                    with h5py.File(os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/data/training_data.hdf5', 'w') as hf:
+                        hf.create_dataset('actions', data=action_list)
+                        hf.create_dataset('next_observations', data=next_state_list)
+                        hf.create_dataset('observations', data=state_list)
+                        hf.create_dataset('rewards', data=reward_list)
+                        hf.create_dataset('terminals', data=done_list)
+                        hf.create_dataset('timeouts', data=time_out_list)
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
                 if reward == -30:
                     gz_env.get_logger().info("collision")
                 if done_cnt >= total_demo_episodes:
-                     break
+                    break
                 
             if time_out: #timeout
                 gz_env.get_logger().info("timeout")
