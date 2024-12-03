@@ -18,7 +18,7 @@ import h5py
 import os
 import datetime
 stamp = datetime.datetime.now().strftime("%H%M%S")
-
+fail_fast = False
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
@@ -270,7 +270,7 @@ class GazeboEnv(Node):
             self.get_logger().info('Goal reached!')
         elif mind < 0.11: #could add collision listener but this p good
             reward = -30
-            done = False
+            done = fail_fast
             self.get_logger().info('Collision!')
         elif mind < 0.25:
             reward = -1

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 stamp = 234524
+fail_fast = False
 import rclpy
 from rclpy.node import Node
 from rclpy import Parameter
@@ -305,7 +306,7 @@ class GazeboEnv(Node):
             self.get_logger().info('Goal reached!')
         elif mind < 0.11: #could add collision listener but this p good
             reward = -30
-            done = True
+            done = fail_fast
             self.get_logger().info('Collision!')
         elif mind < 0.25:
             reward = -1
