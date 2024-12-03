@@ -276,16 +276,16 @@ class GazeboEnv(Node):
         else:
             done = False
         reward -= reltime * 50
-
+        self.get_logger().info(f"ts: {step}, max {max_episode_steps}")
         # time out
-        if step >= max_episode_steps:
+        if step >= max_episode_steps -1:
             self.get_logger().info("time out")
             done = True
             self.timeouts = True
         
         if done:
             reward -= np.exp(reltime) * 50
-        return self.actions, self.next_obs, self.obs, reward, done, self.timeouts
+        return self.actions, self.next_obs, self.obs, reward, done, self.timeouts, dist, reltime, collision
 
     def reset(self):
         
@@ -852,6 +852,9 @@ if __name__ == '__main__':
     reward_list = []
     done_list = []
     time_out_list = []
+    dist_list = []
+    reltime_list = []
+    collision_list = []
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(gz_env)
@@ -862,11 +865,11 @@ if __name__ == '__main__':
 
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
-
+    collision = False
     try:
         while rclpy.ok():
 
-            action, next_state, state, reward, done, time_out = gz_env.step(time_step, max_ep_len)
+            action, next_state, state, reward, done, time_out, dist, reltime, collision = gz_env.step(time_step, max_ep_len)
             action_list.append([action[0], action[1], action[2]])
             next_state_list.append([next_state[0], next_state[1], next_state[2], next_state[3],
                                     next_state[4], next_state[5], next_state[6], next_state[7],
@@ -880,20 +883,27 @@ if __name__ == '__main__':
             reward_list.append(reward)
             done_list.append(done)
             time_out_list.append(time_out)
+            dist_list.append(dist)
+            reltime_list.append(reltime)
+            collision_list.append(collision)
             time_step += 1
-            if not done and time_step < max_ep_len:
+            if not done and time_step <= max_ep_len:
                 continue
             i_episode += 1
             if done:
                 done_cnt += 1
                 if done_cnt % 50 == 0:
-                    with h5py.File(os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/data/training_data.hdf5', 'w') as hf:
+                    with h5py.File(os.environ['HOME'] + 
+                                   f'/imitation_learning_ros/src/imitation_learning/data/training_data_{done_cnt}.hdf5', 'w') as hf:
                         hf.create_dataset('actions', data=action_list)
                         hf.create_dataset('next_observations', data=next_state_list)
                         hf.create_dataset('observations', data=state_list)
                         hf.create_dataset('rewards', data=reward_list)
                         hf.create_dataset('terminals', data=done_list)
                         hf.create_dataset('timeouts', data=time_out_list)
+                        hf.create_dataset('distances', data=dist_list)
+                        hf.create_dataset('reltimes', data=reltime_list)
+                        hf.create_dataset('collisions', data=collision_list)
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
                 if reward == -30:
                     gz_env.get_logger().info("collision")
@@ -902,7 +912,7 @@ if __name__ == '__main__':
                 
             if time_out: #timeout
                 gz_env.get_logger().info("timeout")
-            gz_env.get_logger().info(f"Episode:{i_episode}, Reward:{reward}, Done:{done}, Time_out:{time_out}")
+            gz_env.get_logger().info(f"Episode:{i_episode}, Reward:{reward}, Done:{done}, Time_out:{time_out}, Time_step:{time_step}")
             time_step = 0
             gz_env.reset()
             
@@ -918,6 +928,9 @@ if __name__ == '__main__':
             hf.create_dataset('rewards', data=reward_list)
             hf.create_dataset('terminals', data=done_list)
             hf.create_dataset('timeouts', data=time_out_list)
+            hf.create_dataset('distances', data=dist_list)
+            hf.create_dataset('reltimes', data=reltime_list)
+            hf.create_dataset('collisions', data=collision_list)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
