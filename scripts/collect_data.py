@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy import Parameter
 from sensor_msgs.msg import Joy, LaserScan
 from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
@@ -24,6 +25,7 @@ class GazeboEnv(Node):
 
     def __init__(self):
         super().__init__('env')
+        self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
 
         self.seed = 0
         self.wheel_vel1 = np.array([0,0,0,0], float)
@@ -258,6 +260,7 @@ class GazeboEnv(Node):
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
+        reltime = step / max_episode_steps
         if(dist <= 0.35):
             done = True 
             reward = 500 
@@ -272,7 +275,7 @@ class GazeboEnv(Node):
             done = False
         else:
             done = False
-        reward -= (step / max_episode_steps) * 50
+        reward -= reltime * 50
 
         # time out
         if step >= max_episode_steps:
@@ -281,7 +284,7 @@ class GazeboEnv(Node):
             self.timeouts = True
         
         if done:
-            reward -= np.exp(step / max_episode_steps) * 50
+            reward -= np.exp(reltime) * 50
         return self.actions, self.next_obs, self.obs, reward, done, self.timeouts
 
     def reset(self):
@@ -834,7 +837,7 @@ if __name__ == '__main__':
     # state space dimension
     state_dim = 20
     action_dim = 3
-    total_test_episodes = 100
+    total_demo_episodes = 500
     max_ep_len = 100
 
     test_running_reward = 0
@@ -884,10 +887,11 @@ if __name__ == '__main__':
             if done:
                 done_cnt += 1
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
-                if done_cnt >= 40:
-                     break
                 if reward == -30:
                     gz_env.get_logger().info("collision")
+                if done_cnt >= total_demo_episodes:
+                     break
+                
             if time_out: #timeout
                 gz_env.get_logger().info("timeout")
             gz_env.get_logger().info(f"Episode:{i_episode}, Reward:{reward}, Done:{done}, Time_out:{time_out}")

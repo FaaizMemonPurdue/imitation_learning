@@ -42,8 +42,6 @@ class GazeboEnv(Node):
 
     def __init__(self, absorbing: bool, load_data: bool=False):
         super().__init__('env')
-        # self.declare_parameter('use_sim_time', True)
-        # simt = Parameter('use_sim_time', Parameter.Type.BOOL)
         self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
         self.absorbing = absorbing
 

@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy import Parameter
 from sensor_msgs.msg import LaserScan
 from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
@@ -45,7 +46,7 @@ class GazeboEnv(Node):
 
     def __init__(self, absorbing: bool, load_data: bool=False):
         super().__init__('env')
-
+        self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
         self.absorbing = absorbing
 
         if load_data:
