@@ -230,7 +230,7 @@ class GazeboEnv(Node):
         self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2) + self.L*axes[2])/self.Rw
         self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)   + self.L*axes[2])/self.Rw
         self.wheel_vel1[3] = (axes[0]*math.sin(math.pi/4 - math.pi/2) + axes[1]*math.cos(math.pi/4 - math.pi/2) + self.L*axes[2])/self.Rw
-
+        print(f"vel1: {self.wheel_vel1[0]}, {self.wheel_vel1[1]}, {self.wheel_vel1[2]}, {self.wheel_vel1[3]}")
         array_forPublish1_vel = Float64MultiArray(data=self.wheel_vel1)  
         self.publisher_robot_vel1.publish(array_forPublish1_vel)
 
