@@ -272,7 +272,7 @@ class GazeboEnv(Node):
             done = True 
             reward = 500 
             self.get_logger().info('Goal reached!')
-        elif mind < 0.11: #could add collision listener but this p good
+        elif mind < 0.11 and step != 0: #could add collision listener but this p good
             reward = -30
             done = fail_fast
             self.get_logger().info('Collision!')
@@ -862,7 +862,8 @@ if __name__ == '__main__':
     dist_list = []
     reltime_list = []
     collision_list = []
-
+    time_list = []
+    spread_list = []
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(gz_env)
     executor.add_node(get_modelstate)
@@ -894,10 +895,14 @@ if __name__ == '__main__':
             reltime_list.append(reltime)
             collision_list.append(collision)
             time_step += 1
+            time_list.append(time_step)
             if not done and time_step <= max_ep_len:
                 continue
             i_episode += 1
             if done:
+                ep_performance = reward
+                spread_ep = [reward] * time_step
+                spread_list.extend(spread_ep)
                 done_cnt += 1
                 if done_cnt % 10 == 0:
                     with h5py.File(prefix + f'training_data_{done_cnt}.hdf5', 'w') as hf:
@@ -910,6 +915,8 @@ if __name__ == '__main__':
                         hf.create_dataset('distances', data=dist_list)
                         hf.create_dataset('reltimes', data=reltime_list)
                         hf.create_dataset('collisions', data=collision_list)
+                        hf.create_dataset('spread_list', data=spread_list)
+                        hf.create_dataset('time', data=time_list)
                 gz_env.get_logger().info(f"done_cnt:{done_cnt}")
                 if reward == -30:
                     gz_env.get_logger().info("collision")
@@ -937,6 +944,8 @@ if __name__ == '__main__':
             hf.create_dataset('distances', data=dist_list)
             hf.create_dataset('reltimes', data=reltime_list)
             hf.create_dataset('collisions', data=collision_list)
+            hf.create_dataset('spread_list', data=spread_list)
+
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
