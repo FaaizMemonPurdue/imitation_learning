@@ -241,7 +241,7 @@ class GazeboEnv(Node):
         #self.done = False
         #self.actions = np.array([0,0,0], float)
 
-        self.TIME_DELTA = 0.01
+        self.TIME_DELTA = 0.2
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
         self.timeouts = False
         self.obs = np.zeros(22)

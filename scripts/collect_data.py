@@ -16,6 +16,8 @@ import time
 import copy
 import h5py
 import os
+import datetime
+stamp = datetime.datetime.now().strftime("%H%M%S")
 
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
@@ -267,7 +269,7 @@ class GazeboEnv(Node):
             self.get_logger().info('Goal reached!')
         elif mind < 0.11: #could add collision listener but this p good
             reward = -30
-            done = True
+            done = False
             self.get_logger().info('Collision!')
         elif mind < 0.25:
             reward = -1
@@ -837,7 +839,7 @@ if __name__ == '__main__':
     # state space dimension
     state_dim = 20
     action_dim = 3
-    total_demo_episodes = 500
+    total_demo_episodes = 50
     max_ep_len = 100
 
     test_running_reward = 0
@@ -892,9 +894,9 @@ if __name__ == '__main__':
             i_episode += 1
             if done:
                 done_cnt += 1
-                if done_cnt % 50 == 0:
+                if done_cnt % 10 == 0:
                     with h5py.File(os.environ['HOME'] + 
-                                   f'/imitation_learning_ros/src/imitation_learning/data/training_data_{done_cnt}.hdf5', 'w') as hf:
+                                   f'/imitation_learning_ros/src/imitation_learning/data/training_data_{stamp}_{done_cnt}.hdf5', 'w') as hf:
                         hf.create_dataset('actions', data=action_list)
                         hf.create_dataset('next_observations', data=next_state_list)
                         hf.create_dataset('observations', data=state_list)
@@ -921,7 +923,7 @@ if __name__ == '__main__':
         #    print(f"{i}:{state_list[i]}")
         #    print(f"{i}:{next_state_list[i]}")
         
-        with h5py.File(os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/data/training_data.hdf5', 'w') as hf:
+        with h5py.File(os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/training_data_{stamp}_all.hdf5', 'w') as hf:
             hf.create_dataset('actions', data=action_list)
             hf.create_dataset('next_observations', data=next_state_list)
             hf.create_dataset('observations', data=state_list)
