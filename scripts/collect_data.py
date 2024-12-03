@@ -23,7 +23,10 @@ robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
 prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
-
+if not os.path.exists(prefix):
+    os.makedirs(prefix)
+with open(f'{prefix}fail_fast_{fail_fast}', 'w') as f:
+    f.write(str(fail_fast))
 class GazeboEnv(Node):
 
     def __init__(self):
@@ -214,7 +217,7 @@ class GazeboEnv(Node):
         self.t_limit = 6000
 
         self.actions = np.array([0,0,0], float)
-
+        self.publisher_stepspd = self.create_publisher(Float64MultiArray, '/stepspd', 10)
         self.TIME_DELTA = 0.2
         self.timeouts = False
         self.obs = np.zeros(22)
@@ -238,6 +241,7 @@ class GazeboEnv(Node):
         print(f"vel1: {self.wheel_vel1[0]}, {self.wheel_vel1[1]}, {self.wheel_vel1[2]}, {self.wheel_vel1[3]}")
         array_forPublish1_vel = Float64MultiArray(data=self.wheel_vel1)  
         self.publisher_robot_vel1.publish(array_forPublish1_vel)
+        self.publisher_stepspd.publish(array_forPublish1_vel)
 
         while not gz_env.unpause.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
@@ -825,7 +829,7 @@ class Lidar_subscriber(Node):
         global lidar_data
         # https://docs.ros.org/en/api/sensor_msgs/html/msg/LaserScan.html
         for i in range(20):
-            lidar_data[i] = data.ranges[18*i]
+            lidar_data[i] = data.ranges[i]
             if(lidar_data[i] > 7.465):
                 lidar_data[i] = 7.465
 

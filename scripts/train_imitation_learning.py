@@ -995,7 +995,10 @@ if __name__ == '__main__':
     state_list = []
     reward_list = []
     done_list = []
-    time_out_list = []   
+    time_out_list = []
+    dist_list = []
+    reltime_list = []
+    collision_list = []
 
     assert cfg['defaults'][1]['algorithm'] in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
     cfg['memory']['size'] = min(cfg['steps'], cfg['memory']['size']) 
@@ -1027,7 +1030,10 @@ if __name__ == '__main__':
     action_size = 3
     max_episode_steps = 100
     file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
-    
+    if not os.path.exists(file_prefix):
+        os.makedirs(file_prefix)
+    with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
+        f.write(str(cfg['defaults'][1]['algorithm']))
     # Set up agent
     actor = SoftActor(state_size, action_size, cfg['reinforcement']['actor'])
     critic = TwinCritic(state_size, action_size, cfg['reinforcement']['critic'])

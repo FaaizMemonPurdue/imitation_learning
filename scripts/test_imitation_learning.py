@@ -67,7 +67,7 @@ class GazeboEnv(Node):
         self.req = Empty.Request
 
         self.publisher_robot_vel1 = self.create_publisher(Float64MultiArray, '/robot_1/forward_velocity_controller/commands', 10)
-        self.publisher_tracker = self.create_publisher(Float64MultiArray, '/stepspd', 10)
+        self.publisher_stepspd = self.create_publisher(Float64MultiArray, '/stepspd', 10)
         self.set_box1_state = EntityState()
         self.set_box1_state.name = "box1"
         self.set_box1_state.pose.position.x = 0.0
@@ -269,7 +269,7 @@ class GazeboEnv(Node):
         #gz_env.publisher_vel1.publish(gz_env.vel_msg1)
         array_forPublish1_vel = Float64MultiArray(data=self.wheel_vel1)  
         self.publisher_robot_vel1.publish(array_forPublish1_vel)
-        self.publisher_tracker.publish(array_forPublish1_vel)
+        self.publisher_stepspd.publish(array_forPublish1_vel)
         #'''
         while not gz_env.unpause.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
@@ -1089,7 +1089,6 @@ if __name__ == '__main__':
 
     try:
         while rclpy.ok():
-
             test_returns = evaluate_agent(actor, cfg['evaluation']['episodes'])
             break
 
