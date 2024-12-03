@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+stamp = 234524
 import rclpy
 from rclpy.node import Node
 from rclpy import Parameter
@@ -830,7 +830,7 @@ class GazeboEnv(Node):
     
     def get_dataset(self, trajectories: int=0, subsample: int=1) -> ReplayMemory:
         # Extract data
-        f = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/data/training_data.hdf5'
+        f = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/training_data_all.hdf5'
         expert_data = h5py.File(f,'r')
         states = torch.as_tensor(expert_data['observations'], dtype=torch.float32)
         actions = torch.as_tensor(expert_data['actions'], dtype=torch.float32)
@@ -1025,8 +1025,8 @@ if __name__ == '__main__':
     state_size = 23
     action_size = 3
     max_episode_steps = 100
-    file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/'
-
+    file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
+    
     # Set up agent
     actor = SoftActor(state_size, action_size, cfg['reinforcement']['actor'])
     critic = TwinCritic(state_size, action_size, cfg['reinforcement']['critic'])

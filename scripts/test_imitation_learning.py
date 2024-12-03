@@ -25,7 +25,7 @@ import yaml
 from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, \
                    RewardRelabeller, TwinCritic, create_target_network
-
+stamp = 234524
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
@@ -336,7 +336,7 @@ class GazeboEnv(Node):
         if self.absorbing:
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
             next_obs_re = torch.cat([next_obs_re, torch.zeros(next_obs_re.size(0), 1)], dim=1) 
-
+        self.get_logger().info(f"step:{step}")
         return next_obs_re, reward, done #next_state, reward, terminal
 
     def reset(self):
@@ -839,7 +839,7 @@ class GazeboEnv(Node):
     
     def get_dataset(self, trajectories: int=0, subsample: int=1) -> ReplayMemory:
         # Extract data
-        f = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/data/training_data.hdf5'
+        f = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/training_data_all.hdf5'
         expert_data = h5py.File(f,'r')
         states = torch.as_tensor(expert_data['observations'], dtype=torch.float32)
         actions = torch.as_tensor(expert_data['actions'], dtype=torch.float32)
@@ -948,7 +948,7 @@ class Lidar_subscriber(Node):
         global lidar_data
         # https://docs.ros.org/en/api/sensor_msgs/html/msg/LaserScan.html
         for i in range(20):
-            lidar_data[i] = data.ranges[18*i]
+            lidar_data[i] = data.ranges[i]
             if(lidar_data[i] > 7.465):
                 lidar_data[i] = 7.465
 
@@ -961,7 +961,8 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
   max_episode_steps = 100
 
   with torch.inference_mode():
-    for _ in range(num_episodes):
+    for i in range(num_episodes):
+      print(i)
       states = []
       actions = []
       rewards = []

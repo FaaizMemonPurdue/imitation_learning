@@ -22,6 +22,7 @@ stamp = datetime.datetime.now().strftime("%H%M%S")
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
+prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
 
 class GazeboEnv(Node):
 
@@ -895,8 +896,7 @@ if __name__ == '__main__':
             if done:
                 done_cnt += 1
                 if done_cnt % 10 == 0:
-                    with h5py.File(os.environ['HOME'] + 
-                                   f'/imitation_learning_ros/src/imitation_learning/data/training_data_{stamp}_{done_cnt}.hdf5', 'w') as hf:
+                    with h5py.File(prefix + f'training_data_{done_cnt}.hdf5', 'w') as hf:
                         hf.create_dataset('actions', data=action_list)
                         hf.create_dataset('next_observations', data=next_state_list)
                         hf.create_dataset('observations', data=state_list)
@@ -923,7 +923,7 @@ if __name__ == '__main__':
         #    print(f"{i}:{state_list[i]}")
         #    print(f"{i}:{next_state_list[i]}")
         
-        with h5py.File(os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/training_data_{stamp}_all.hdf5', 'w') as hf:
+        with h5py.File(prefix + f'/training_data_all.hdf5', 'w') as hf:
             hf.create_dataset('actions', data=action_list)
             hf.create_dataset('next_observations', data=next_state_list)
             hf.create_dataset('observations', data=state_list)
