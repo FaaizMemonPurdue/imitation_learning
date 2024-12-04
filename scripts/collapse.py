@@ -11,27 +11,28 @@ rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/
 def norm(prefix):
     src = prefix + 'training_data_all.hdf5'
     dst = prefix + 'training_data_all_normalized.hdf5'
+    print(src)
     shutil.copy(src, dst)
-    with h5py.File(dst, 'a') as a:
-            if 'spread_list' in a:
-                # Read the dataset into a NumPy array
-                b = np.array(a['spread_list'])
-                
-                # Perform normalization
-                b_min = np.min(b)
-                b = b - b_min
-                b = np.log(b + 1e-6)  # Apply logarithmic scaling
-                b_min_log = np.min(b)
-                b = b - b_min_log
-                b_max = np.max(b)
-                if b_max != 0:
-                    b = b / b_max
-                else:
-                    print("Warning: Maximum value after normalization is 0. Skipping division.")
-                
-                # Overwrite the existing 'spread_list' dataset
-                # del a['spread_list']  # Delete the original dataset
-                a.create_dataset('conf', data=b)
+    with h5py.File(dst, 'r+') as a:
+        if 'spread_list' in a:
+            # Read the dataset into a NumPy array
+            b = np.array(a['spread_list'])
+            
+            # Perform normalization
+            b_min = np.min(b)
+            b = b - b_min
+            b = np.log(b + 1e-6)  # Apply logarithmic scaling
+            b_min_log = np.min(b)
+            b = b - b_min_log
+            b_max = np.max(b)
+            if b_max != 0:
+                b = b / b_max
+            else:
+                print("Warning: Maximum value after normalization is 0. Skipping division.")
+            
+            # Overwrite the existing 'spread_list' dataset
+            # del a['spread_list']  # Delete the original dataset
+            a.create_dataset('conf', data=b)
     # a = h5py.File(dst, 'a')
     # for k in a.keys():
     #     print(np.array(k).shape)

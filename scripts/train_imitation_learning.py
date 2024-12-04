@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-stamp = 152830 #lstick
+stamp = 152840 #lstick
 # stamp = 155122 #rstick
-fail_fast = False
+fail_fast = True
 watch_actions = True
 import rclpy
 from rclpy.node import Node
@@ -302,6 +302,7 @@ class GazeboEnv(Node):
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
+        collision = False
         if(dist <= 0.35):
             done = True 
             reward = 500 
@@ -309,6 +310,7 @@ class GazeboEnv(Node):
         elif mind < 0.11: #could add collision listener but this p good
             reward = -30
             done = fail_fast
+            collision = True
             self.get_logger().info('Collision!')
         elif mind < 0.25:
             reward = -1
@@ -322,6 +324,7 @@ class GazeboEnv(Node):
         # time out
         if step >= max_episode_steps:
             self.get_logger().info("time out")
+            timo = True
             done = True
         
         if done:
@@ -331,7 +334,7 @@ class GazeboEnv(Node):
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
             next_obs_re = torch.cat([next_obs_re, torch.zeros(next_obs_re.size(0), 1)], dim=1) 
 
-        return next_obs_re, reward, done #next_state, reward, terminal
+        return next_obs_re, reward, done, collision, timo #next_state, reward, terminal
 
     def reset(self):
         global axes, lidar_data
@@ -942,7 +945,7 @@ class Lidar_subscriber(Node):
         global lidar_data
         # https://docs.ros.org/en/api/sensor_msgs/html/msg/LaserScan.html
         for i in range(20):
-            lidar_data[i] = data.ranges[18*i]
+            lidar_data[i] = data.ranges[i]
             if(lidar_data[i] > 7.465):
                 lidar_data[i] = 7.465
 
@@ -953,7 +956,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
   #if render:
   #    env.render()
   max_episode_steps = 100
-
+  eval_met = {'suc': 0, 'timo': 0, 'ast': 0, 'col': 0}
   with torch.inference_mode():
     for _ in range(num_episodes):
       states = []
@@ -964,7 +967,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
       t = 0
       while not terminal:
           action = actor.get_greedy_action(state)  # Take greedy action
-          next_state, reward, terminal = gz_env.step(action, t, max_episode_steps)
+          next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
           t += 1
 
           if return_trajectories:
@@ -972,14 +975,21 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
             actions.append(action)
           rewards.append(reward)
           state = next_state
+          if terminal:
+                if timo:
+                    eval_met['timo'] += 1
+                elif collision:
+                    eval_met['col'] += 1
+                else:
+                    eval_met['suc'] += 1
+                    eval_met['ast'] += t
+      eval_met['ast'] = eval_met['ast'] / eval_met['suc']
       returns.append(sum(rewards))
-
-      if return_trajectories:
-        # Collect trajectory data (including terminal signal, which may be needed for offline learning)
-        terminals = torch.cat([torch.zeros(len(rewards) - 1), torch.ones(1)])
-        trajectories.append({'states': torch.cat(states), 'actions': torch.cat(actions), 'rewards': torch.tensor(rewards, dtype=torch.float32), 'terminals': terminals})
-
-  return (returns, trajectories) if return_trajectories else returns
+    #   if return_trajectories:
+    #     # Collect trajectory data (including terminal signal, which may be needed for offline learning)
+    #     terminals = torch.cat([torch.zeros(len(rewards) - 1), torch.ones(1)])
+    #     trajectories.append({'states': torch.cat(states), 'actions': torch.cat(actions), 'rewards': torch.tensor(rewards, dtype=torch.float32), 'terminals': terminals})
+  return returns, trajectories, eval_met, actions
 
 if __name__ == '__main__':
     rclpy.init(args=None)
@@ -991,16 +1001,6 @@ if __name__ == '__main__':
     #eval_env = GazeboEnv(cfg['imitation']['absorbing'])
     get_modelstate = Get_modelstate()
     lidar_subscriber = Lidar_subscriber()
-
-    action_list = []
-    next_state_list = []
-    state_list = []
-    reward_list = []
-    done_list = []
-    time_out_list = []
-    dist_list = []
-    reltime_list = []
-    collision_list = []
 
     assert cfg['defaults'][1]['algorithm'] in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
     cfg['memory']['size'] = min(cfg['steps'], cfg['memory']['size']) 
@@ -1034,8 +1034,10 @@ if __name__ == '__main__':
     file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
     if not os.path.exists(file_prefix):
         os.makedirs(file_prefix)
-    with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
-        f.write(str(cfg['defaults'][1]['algorithm']))
+    with open(f'{file_prefix}fail_fast_{fail_fast}', 'w') as f:
+        f.write(str(fail_fast))
+    # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
+    #     f.write(str(cfg['defaults'][1]['algorithm']))
     # Set up agent
     actor = SoftActor(state_size, action_size, cfg['reinforcement']['actor'])
     critic = TwinCritic(state_size, action_size, cfg['reinforcement']['critic'])
@@ -1070,31 +1072,7 @@ if __name__ == '__main__':
     score = []  # Score used for hyperparameter optimization 
 
     if cfg['check_time_usage']: start_time = time.time()  # Performance tracking
-    # # WE DON'T NEED THIS
-    # # Behavioural cloning pretraining
-    # if cfg['bc_pretraining']['iterations'] > 0:
-    #   expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg['training']['batch_size'], shuffle=True, drop_last=True)))
-    #   actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg['bc_pretraining']['learning_rate'], weight_decay=cfg['bc_pretraining']['weight_decay'])  # Create separate pretraining optimiser
-    #   for _ in tqdm(range(cfg['bc_pretraining']['iterations']), leave=False):
-    #     expert_transitions = next(expert_dataloader)
-    #     behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
 
-    #   if cfg['defaults'][1]['algorithm'] == 'BC':  # Return early if algorithm is BC
-    #     if cfg['check_time_usage']:
-    #         metrics['pre_training_time'] = time.time() - start_time
-    #     test_returns = evaluate_agent(actor, cfg['evaluation']['episodes'])
-    #     test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
-    #     steps = [*range(0, cfg['steps'], cfg['evaluation']['interval'])]
-    #     metrics['test_steps'] = [0]
-    #     metrics['test_returns'] = [test_returns]
-    #     metrics['test_returns_normalized'] = [list(test_returns_normalized)]
-    #     lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']}")
-
-    #     torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
-    #     torch.save(metrics, f'{file_prefix}metrics.pth')
-    #     #env.close()
-    #     #eval_env.close()
-    #     #return np.mean(test_returns_normalized)
 
     # Pretraining "discriminators"
     if cfg['defaults'][1]['algorithm'] in ['DRIL', 'RED']:
@@ -1134,8 +1112,14 @@ if __name__ == '__main__':
 
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
-    train_actions = []
+    collect_actions = []
     eval_actions = []
+
+    #faaiz metrics for EVAL
+    success_list = []
+    timeout_list = []
+    avg_success_time = []
+    collision_list = []
     try:
         while rclpy.ok():
 
@@ -1151,9 +1135,9 @@ if __name__ == '__main__':
             for step in pbar:
                 # Collect set of transitions by running policy π in the environment
                 with torch.inference_mode():
-                    action = actor(state).sample()
-                    train_actions.append(action)
-                    next_state, reward, terminal = gz_env.step(action, t, max_episode_steps)
+                    action = actor(state).sample() #(1,3)
+                    collect_actions.append(action) # the axes in [0]
+                    next_state, reward, terminal, _, _ = gz_env.step(action, t, max_episode_steps)
                     t += 1
                     train_return += reward
                     if cfg['defaults'][1]['algorithm'] == 'PWIL':
@@ -1195,6 +1179,7 @@ if __name__ == '__main__':
                     # Predict rewards
                     states = transitions['states']
                     actions = transitions['actions']
+
                     next_states = transitions['next_states']
                     terminals = transitions['terminals']
                     weights = transitions['weights']
@@ -1239,8 +1224,14 @@ if __name__ == '__main__':
 
                 # Evaluate agent and plot metrics
                 if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
+                  
                   gz_env.get_logger().info("Evaluation of the agent")
-                  test_returns = evaluate_agent(actor, cfg['evaluation']['episodes'])
+                  test_returns, trajectories, eval_met = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True)
+                  success_list.append(eval_met['suc'])
+                  timeout_list.append(eval_met['timo'])
+                  avg_success_time.append(eval_met['ast'])
+                  collision_list.append(eval_met['col'])
+                  torch.save(trajectories, f'{file_prefix}eval_trajectories_{step}.pth')
                   test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
                   score.append(np.mean(test_returns_normalized))
                   metrics['test_steps'].append(step)
@@ -1257,17 +1248,13 @@ if __name__ == '__main__':
                     lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']} Entropy")
                     lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']} Q-values")
                   '''
-
+            torch.save(f'{file_prefix}collect_actions.pt', torch.cat(collect_actions))
+            np.save(f'{file_prefix}eval_actions.npy', eval_actions)
             gz_env.get_logger().info(f"metrics:{metrics}")
-
+            np.savez(f'{file_prefix}eval_metrics.npz', success_list=success_list, timeout_list=timeout_list, avg_success_time=avg_success_time, collision_list=collision_list)
             if cfg['check_time_usage']:
                 metrics['training_time'] = time.time() - start_time
-
-            if cfg['save_trajectories']:
-                # Store trajectories from agent after training
-                _, trajectories = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True, render=cfg['render'])
-                torch.save(trajectories, f'{file_prefix}trajectories.pth')
-            # Save agent and metrics
+            
             torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f'{file_prefix}agent.pth')
             if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
                 torch.save(discriminator.state_dict(), f'{file_prefix}discriminator.pth')
