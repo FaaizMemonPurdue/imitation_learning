@@ -1,6 +1,8 @@
 #!/usr/bin/python3
-stamp = 234524
+stamp = 152830 #lstick
+# stamp = 155122 #rstick
 fail_fast = False
+watch_actions = True
 import rclpy
 from rclpy.node import Node
 from rclpy import Parameter
@@ -268,7 +270,7 @@ class GazeboEnv(Node):
         self.wheel_vel1[1] = (action[0]*math.sin(math.pi/4 + math.pi/2) + action[1]*math.cos(math.pi/4 + math.pi/2) + self.L*action[2])/self.Rw
         self.wheel_vel1[2] = (action[0]*math.sin(math.pi/4 - math.pi)   + action[1]*math.cos(math.pi/4 - math.pi)   + self.L*action[2])/self.Rw
         self.wheel_vel1[3] = (action[0]*math.sin(math.pi/4 - math.pi/2) + action[1]*math.cos(math.pi/4 - math.pi/2) + self.L*action[2])/self.Rw
-
+    
 
         #publish robot1 commands
         #gz_env.publisher_vel1.publish(gz_env.vel_msg1)
@@ -1068,31 +1070,31 @@ if __name__ == '__main__':
     score = []  # Score used for hyperparameter optimization 
 
     if cfg['check_time_usage']: start_time = time.time()  # Performance tracking
+    # # WE DON'T NEED THIS
+    # # Behavioural cloning pretraining
+    # if cfg['bc_pretraining']['iterations'] > 0:
+    #   expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg['training']['batch_size'], shuffle=True, drop_last=True)))
+    #   actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg['bc_pretraining']['learning_rate'], weight_decay=cfg['bc_pretraining']['weight_decay'])  # Create separate pretraining optimiser
+    #   for _ in tqdm(range(cfg['bc_pretraining']['iterations']), leave=False):
+    #     expert_transitions = next(expert_dataloader)
+    #     behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
 
-    # Behavioural cloning pretraining
-    if cfg['bc_pretraining']['iterations'] > 0:
-      expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg['training']['batch_size'], shuffle=True, drop_last=True)))
-      actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg['bc_pretraining']['learning_rate'], weight_decay=cfg['bc_pretraining']['weight_decay'])  # Create separate pretraining optimiser
-      for _ in tqdm(range(cfg['bc_pretraining']['iterations']), leave=False):
-        expert_transitions = next(expert_dataloader)
-        behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
+    #   if cfg['defaults'][1]['algorithm'] == 'BC':  # Return early if algorithm is BC
+    #     if cfg['check_time_usage']:
+    #         metrics['pre_training_time'] = time.time() - start_time
+    #     test_returns = evaluate_agent(actor, cfg['evaluation']['episodes'])
+    #     test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
+    #     steps = [*range(0, cfg['steps'], cfg['evaluation']['interval'])]
+    #     metrics['test_steps'] = [0]
+    #     metrics['test_returns'] = [test_returns]
+    #     metrics['test_returns_normalized'] = [list(test_returns_normalized)]
+    #     lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']}")
 
-      if cfg['defaults'][1]['algorithm'] == 'BC':  # Return early if algorithm is BC
-        if cfg['check_time_usage']:
-            metrics['pre_training_time'] = time.time() - start_time
-        test_returns = evaluate_agent(actor, cfg['evaluation']['episodes'])
-        test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
-        steps = [*range(0, cfg['steps'], cfg['evaluation']['interval'])]
-        metrics['test_steps'] = [0]
-        metrics['test_returns'] = [test_returns]
-        metrics['test_returns_normalized'] = [list(test_returns_normalized)]
-        lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']}")
-
-        torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
-        torch.save(metrics, f'{file_prefix}metrics.pth')
-        #env.close()
-        #eval_env.close()
-        #return np.mean(test_returns_normalized)
+    #     torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
+    #     torch.save(metrics, f'{file_prefix}metrics.pth')
+    #     #env.close()
+    #     #eval_env.close()
+    #     #return np.mean(test_returns_normalized)
 
     # Pretraining "discriminators"
     if cfg['defaults'][1]['algorithm'] in ['DRIL', 'RED']:
@@ -1132,7 +1134,8 @@ if __name__ == '__main__':
 
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
-
+    train_actions = []
+    eval_actions = []
     try:
         while rclpy.ok():
 
@@ -1149,6 +1152,7 @@ if __name__ == '__main__':
                 # Collect set of transitions by running policy π in the environment
                 with torch.inference_mode():
                     action = actor(state).sample()
+                    train_actions.append(action)
                     next_state, reward, terminal = gz_env.step(action, t, max_episode_steps)
                     t += 1
                     train_return += reward
