@@ -1,6 +1,11 @@
 #!/usr/bin/python3
-stamp = 152840 #lstick
-# stamp = 155122 #rstick
+lstamp = 152840 #lstick
+rstamp = 234524 #rstick
+left = False
+if left:
+    stamp = lstamp
+else:
+    stamp = rstamp
 fail_fast = True
 watch_actions = True
 import rclpy
@@ -318,17 +323,16 @@ class GazeboEnv(Node):
             done = False
         else:
             done = False
-        # reward -= np.exp(step / max_episode_steps) * 50  # punish for taking too long by up to 50 (at timeout)
-        reward -= (step / max_episode_steps) * 50
+        reward -= np.exp(step / max_episode_steps) * 50  # punish for taking too long by up to 50 (at timeout)
+        # reward -= (step / max_episode_steps) * 50
         # exponential penalty was accumulating too much with time, so I added a linear decay to the reward
         # time out
+        timo = False
         if step >= max_episode_steps:
             self.get_logger().info("time out")
             timo = True
             done = True
-        
-        if done:
-            reward -= np.exp(step / max_episode_steps) * 50
+
         next_obs_re = torch.tensor(self.next_obs, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
@@ -956,7 +960,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
   #if render:
   #    env.render()
   max_episode_steps = 100
-  eval_met = {'suc': 0, 'timo': 0, 'ast': 0, 'col': 0}
+  eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
   with torch.inference_mode():
     for _ in range(num_episodes):
       states = []
@@ -972,7 +976,7 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
 
           if return_trajectories:
             states.append(state)
-            actions.append(action)
+            actions.append(np.squeeze(action.numpy())) # Convert to NumPy array for npz serialization jagged array
           rewards.append(reward)
           state = next_state
           if terminal:
@@ -983,7 +987,8 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
                 else:
                     eval_met['suc'] += 1
                     eval_met['ast'] += t
-      eval_met['ast'] = eval_met['ast'] / eval_met['suc']
+      if eval_met['suc'] > 0:
+          eval_met['ast'] = eval_met['ast'] / eval_met['suc']
       returns.append(sum(rewards))
     #   if return_trajectories:
     #     # Collect trajectory data (including terminal signal, which may be needed for offline learning)
@@ -1034,8 +1039,8 @@ if __name__ == '__main__':
     file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
     if not os.path.exists(file_prefix):
         os.makedirs(file_prefix)
-    with open(f'{file_prefix}fail_fast_{fail_fast}', 'w') as f:
-        f.write(str(fail_fast))
+    with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
+        f.write(str(fail_fast) + ' ' + str(left))
     # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
     #     f.write(str(cfg['defaults'][1]['algorithm']))
     # Set up agent
@@ -1226,7 +1231,8 @@ if __name__ == '__main__':
                 if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
                   
                   gz_env.get_logger().info("Evaluation of the agent")
-                  test_returns, trajectories, eval_met = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True)
+                  test_returns, trajectories, eval_met, actions = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True)
+                  eval_actions.append(actions)
                   success_list.append(eval_met['suc'])
                   timeout_list.append(eval_met['timo'])
                   avg_success_time.append(eval_met['ast'])
@@ -1248,10 +1254,14 @@ if __name__ == '__main__':
                     lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']} Entropy")
                     lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f"{cfg['defaults'][1]['algorithm']}: {cfg['env']} Q-values")
                   '''
-            torch.save(f'{file_prefix}collect_actions.pt', torch.cat(collect_actions))
-            np.save(f'{file_prefix}eval_actions.npy', eval_actions)
+            torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
+            # torch.save(f'{file_prefix}eval_actions.pt', torch.cat(eval_actions))
+            np.savez(f'{file_prefix}eval_actions.npz', *eval_actions)
             gz_env.get_logger().info(f"metrics:{metrics}")
-            np.savez(f'{file_prefix}eval_metrics.npz', success_list=success_list, timeout_list=timeout_list, avg_success_time=avg_success_time, collision_list=collision_list)
+            np.savez(f'{file_prefix}eval_metrics.npz', success_list=success_list, 
+                    timeout_list=timeout_list,
+                    avg_success_time=avg_success_time, 
+                    collision_list=collision_list)
             if cfg['check_time_usage']:
                 metrics['training_time'] = time.time() - start_time
             
@@ -1259,8 +1269,9 @@ if __name__ == '__main__':
             if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
                 torch.save(discriminator.state_dict(), f'{file_prefix}discriminator.pth')
             torch.save(metrics, f'{file_prefix}metrics.pth')
-
+            np.save(f'{file_prefix}old_score.npy', score)
             score = np.mean(score)
+            gz_env.get_logger().info(f"score:{score}")
             break
 
     except KeyboardInterrupt:
