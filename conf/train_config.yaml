@@ -5,7 +5,7 @@ defaults:
 
 # General options
 seed: 0
-steps: 20000
+steps: 50000
 env: ant
 # Training/evaluation/logging hyperparameters
 bc_pretraining:

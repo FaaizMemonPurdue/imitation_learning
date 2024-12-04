@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 lstamp = 152840 #lstick
-rstamp = 234524 #rstick
+rstamp = "000000" #rstick
 left = False
 if left:
     stamp = lstamp
