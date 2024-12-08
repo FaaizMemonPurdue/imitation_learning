@@ -18,7 +18,7 @@ import h5py
 import os
 import datetime
 stamp = datetime.datetime.now().strftime("%H%M%S")
-fail_fast = False
+fail_fast = True
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
@@ -878,6 +878,7 @@ if __name__ == '__main__':
         while rclpy.ok():
 
             action, next_state, state, reward, done, time_out, dist, reltime, collision = gz_env.step(time_step, max_ep_len)
+            gz_env.get_logger().info(f"action:{action}")
             action_list.append([action[0], action[1], action[2]])
             next_state_list.append([next_state[0], next_state[1], next_state[2], next_state[3],
                                     next_state[4], next_state[5], next_state[6], next_state[7],
@@ -899,11 +900,13 @@ if __name__ == '__main__':
             if not done and time_step <= max_ep_len:
                 continue
             i_episode += 1
+            done = True
             if done:
                 ep_performance = reward
                 spread_ep = [reward] * time_step
                 spread_list.extend(spread_ep)
                 done_cnt += 1
+                done_cnt = 0
                 if done_cnt % 10 == 0:
                     with h5py.File(prefix + f'training_data_{done_cnt}.hdf5', 'w') as hf:
                         hf.create_dataset('actions', data=action_list)
