@@ -1079,7 +1079,7 @@ if __name__ == '__main__':
     #discriminator.load(discriminator_model)
 
     # loading agent model
-    agent_path = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/agent.pth'
+    agent_path = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/logs/{stamp}agent.pth'
     #agentmodel = torch.load(agent_path)
     checkpoint= torch.load(agent_path)
     #print(load_weights['actor'])
