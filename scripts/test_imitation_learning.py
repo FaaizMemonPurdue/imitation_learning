@@ -25,7 +25,7 @@ import yaml
 from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, \
                    RewardRelabeller, TwinCritic, create_target_network
-stamp = 234524
+stamp = "010607"
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
@@ -1079,7 +1079,7 @@ if __name__ == '__main__':
     #discriminator.load(discriminator_model)
 
     # loading agent model
-    agent_path = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/logs/{stamp}agent.pth'
+    agent_path = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/logs/{stamp}/agent.pth'
     #agentmodel = torch.load(agent_path)
     checkpoint= torch.load(agent_path)
     #print(load_weights['actor'])

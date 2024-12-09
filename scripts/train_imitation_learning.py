@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 lstamp = 152840 #lstick
-rstamp = "235328" #rstick
+rstamp = "010607" #rstick
 left = False
 if left:
     stamp = lstamp
@@ -263,11 +263,11 @@ class GazeboEnv(Node):
 
     def step(self, action, step, max_episode_steps):
         global lidar_data
-
         #self.done = False
         #self.actions[:] = axes[:]
         #obs = copy.copy(lidar_data)
         action = action[0].to('cpu').detach().numpy().copy()
+        self.get_logger().info(f"action:{action}")
         #self.get_logger().info(f"action:{action}")
 
         self.wheel_vel1[0] = (action[0]*math.sin(math.pi/4            ) + action[1]*math.cos(math.pi/4            ) + self.L*action[2])/self.Rw
