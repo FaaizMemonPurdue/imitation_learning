@@ -6,8 +6,8 @@ import gym.spaces
 import scipy.optimize
 import numpy as np
 import math
-import Argument
-
+# import Argument
+import args
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -35,7 +35,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 # get parameters and the modification is made (by temitope)
-args = Argument.arguments()
+# args = Argument.arguments()
 
 
 env = gym.make(args.env)
