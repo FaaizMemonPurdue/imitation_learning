@@ -17,7 +17,7 @@ from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
 import math
-import Argument
+import args
 
 import math
 import threading
@@ -41,7 +41,7 @@ from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, RED
                    RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
 from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, lineplot
-
+from models2 import *
 from replay_memory import Memory
 from torch.autograd import Variable
 from trpo import trpo_step
@@ -50,6 +50,8 @@ from loss import *
 torch.utils.backcompat.broadcast_warning.enabled = True
 torch.utils.backcompat.keepdim_warning.enabled = True
 torch.set_default_tensor_type('torch.DoubleTensor')
+
+# don't try ros args, hardcode for now
 
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
@@ -62,6 +64,89 @@ if(torch.cuda.is_available()):
     print("Device set to : " + str(torch.cuda.get_device_name(device)))
 else:
     print("Device set to : cpu")
+num_inputs = 23
+num_actions = 3
+torch.manual_seed(args.seed)
+np.random.seed(args.seed)
+policy_net = PolicyNet(num_inputs, num_actions, args.hidden_dim)
+value_net = ValueNet(num_inputs, args.hidden_dim).to(device)
+discriminator = Discriminator(num_inputs + num_actions, args.hidden_dim, args.initialization).to(device)
+disc_criterion = nn.BCEWithLogitsLoss()
+value_criterion = nn.MSELoss()
+disc_optimizer = optim.Adam(discriminator.parameters(), args.lr)
+value_optimizer = optim.Adam(value_net.parameters(), args.vf_lr)
+
+def select_action(state):
+    state = torch.from_numpy(state).unsqueeze(0)
+    action_mean, _, action_std = policy_net(Variable(state))
+    action = torch.normal(action_mean, action_std)
+    return action
+def update_params(batch):
+    rewards = torch.Tensor(batch.reward).to(device)
+    masks = torch.Tensor(batch.mask).to(device)
+    actions = torch.Tensor(np.concatenate(batch.action, 0)).to(device)
+    states = torch.Tensor(batch.state).to(device)
+    values = value_net(Variable(states))
+
+    returns = torch.Tensor(actions.size(0),1).to(device)
+    deltas = torch.Tensor(actions.size(0),1).to(device)
+    advantages = torch.Tensor(actions.size(0),1).to(device)
+
+    prev_return = 0
+    prev_value = 0
+    prev_advantage = 0
+    for i in reversed(range(rewards.size(0))):
+        returns[i] = rewards[i] + args.gamma * prev_return * masks[i]
+        deltas[i] = rewards[i] + args.gamma * prev_value * masks[i] - values.data[i]
+        advantages[i] = deltas[i] + args.gamma * args.tau * prev_advantage * masks[i]
+
+        prev_return = returns[i, 0]
+        prev_value = values.data[i, 0]
+        prev_advantage = advantages[i, 0]
+
+    targets = Variable(returns)
+
+    batch_size = math.ceil(states.shape[0] / args.vf_iters)
+    idx = np.random.permutation(states.shape[0])
+    for i in range(args.vf_iters):
+        smp_idx = idx[i * batch_size: (i + 1) * batch_size]
+        smp_states = states[smp_idx, :]
+        smp_targets = targets[smp_idx, :]
+        
+        value_optimizer.zero_grad()
+        value_loss = value_criterion(value_net(Variable(smp_states)), smp_targets)
+        value_loss.backward()
+        value_optimizer.step()
+
+    advantages = (advantages - advantages.mean()) / advantages.std()
+
+    action_means, action_log_stds, action_stds = policy_net(Variable(states.cpu()))
+    fixed_log_prob = normal_log_density(Variable(actions.cpu()), action_means, action_log_stds, action_stds).data.clone()
+
+    def get_loss():
+        action_means, action_log_stds, action_stds = policy_net(Variable(states.cpu()))
+        log_prob = normal_log_density(Variable(actions.cpu()), action_means, action_log_stds, action_stds)
+        action_loss = -Variable(advantages.cpu()) * torch.exp(log_prob - Variable(fixed_log_prob))
+        return action_loss.mean()
+
+
+    def get_kl():
+        mean1, log_std1, std1 = policy_net(Variable(states.cpu()))
+
+        mean0 = Variable(mean1.data)
+        log_std0 = Variable(log_std1.data)
+        std0 = Variable(std1.data)
+        kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / (2.0 * std1.pow(2)) - 0.5
+        return kl.sum(1, keepdim=True)
+
+    trpo_step(policy_net, get_loss, get_kl, args.max_kl, args.damping)
+
+def expert_reward(states, actions):
+    states = np.concatenate(states)
+    actions = np.concatenate(actions)
+    state_action = torch.Tensor(np.concatenate([states, actions], 1)).to(device)
+    return -F.logsigmoid(discriminator(state_action)).cpu().detach().numpy()
+
 
 class GazeboEnv(Node):
 
@@ -1071,19 +1156,19 @@ if __name__ == '__main__':
     gz_env.get_logger().info(f"algorithm : {cfg['defaults'][1]['algorithm']}")
     if cfg['defaults'][1]['algorithm'] in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']:
       if cfg['defaults'][1]['algorithm'] == 'AdRIL':
-        discriminator = RewardRelabeller(cfg['imitation']['update_freq'], cfg['imitation']['balanced'])  # Balanced sampling (switching between expert and policy data every update) is stateful
+        discriminatorOld = RewardRelabeller(cfg['imitation']['update_freq'], cfg['imitation']['balanced'])  # Balanced sampling (switching between expert and policy data every update) is stateful
       if cfg['defaults'][1]['algorithm'] == 'DRIL':
-        discriminator = SoftActor(state_size, action_size, cfg['imitation']['discriminator'])
+        discriminatorOld = SoftActor(state_size, action_size, cfg['imitation']['discriminator'])
       elif cfg['defaults'][1]['algorithm'] == 'GAIL':
-        discriminator = GAILDiscriminator(state_size, action_size, cfg['imitation'], cfg['reinforcement']['discount'])
+        discriminatorOld = GAILDiscriminator(state_size, action_size, cfg['imitation'], cfg['reinforcement']['discount'])
       elif cfg['defaults'][1]['algorithm'] == 'GMMIL':
-        discriminator = GMMILDiscriminator(state_size, action_size, cfg['imitation'])
+        discriminatorOld = GMMILDiscriminator(state_size, action_size, cfg['imitation'])
       elif cfg['defaults'][1]['algorithm'] == 'PWIL':
-        discriminator = PWILDiscriminator(state_size, action_size, cfg['imitation'], expert_memory, max_episode_steps)
+        discriminatorOld = PWILDiscriminator(state_size, action_size, cfg['imitation'], expert_memory, max_episode_steps)
       elif cfg['defaults'][1]['algorithm'] == 'RED':
-        discriminator = REDDiscriminator(state_size, action_size, cfg['imitation'])
+        discriminatorOld = REDDiscriminator(state_size, action_size, cfg['imitation'])
       if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
-        discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg['imitation']['learning_rate'], weight_decay=cfg['imitation']['weight_decay'])
+        discriminator_optimiser = optim.AdamW(discriminatorOld.parameters(), lr=cfg['imitation']['learning_rate'], weight_decay=cfg['imitation']['weight_decay'])
 
     # Metrics
     metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], test_returns_normalized=[], update_steps=[], predicted_rewards=[], alphas=[], entropies=[], Q_values=[])
@@ -1098,15 +1183,15 @@ if __name__ == '__main__':
       for _ in tqdm(range(cfg.imitation.pretraining.iterations), leave=False):
         expert_transition = next(expert_dataloader)
         if cfg['defaults'][1]['algorithm'] == 'DRIL':
-          behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
+          behavioural_cloning_update(discriminatorOld, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
         elif cfg['defaults'][1]['algorithm'] == 'RED':
-          target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
+          target_estimation_update(discriminatorOld, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
 
       with torch.inference_mode():
         if cfg['defaults'][1]['algorithm'] == 'DRIL':
-          discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'], cfg['imitation']['quantile_cutoff'])
+          discriminatorOld.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'], cfg['imitation']['quantile_cutoff'])
         elif cfg['defaults'][1]['algorithm']== 'RED':
-          discriminator.set_sigma(expert_memory['states'][:cfg['training']['batch_size']], expert_memory['actions'][:cfg['training']['batch_size']])  # Estimate on a minibatch for computational feasibility
+          discriminatorOld.set_sigma(expert_memory['states'][:cfg['training']['batch_size']], expert_memory['actions'][:cfg['training']['batch_size']])  # Estimate on a minibatch for computational feasibility
 
       if cfg['check_time_usage']:
         metrics['pre_training_time'] = time.time() - start_time
@@ -1117,8 +1202,8 @@ if __name__ == '__main__':
       if cfg['imitation']['mix_expert_data'] != 'none':
         with torch.inference_mode():
           for i, transition in tqdm(enumerate(expert_memory), leave=False):
-            expert_memory.rewards[i] = discriminator.compute_reward(transition['states'].unsqueeze(dim=0), transition['actions'].unsqueeze(dim=0))  # Greedily calculate the reward for PWIL for expert data and rewrite memory
-            if transition['terminals'] or transition['timeouts']: discriminator.reset()  # Reset the expert data for PWIL
+            expert_memory.rewards[i] = discriminatorOld.compute_reward(transition['states'].unsqueeze(dim=0), transition['actions'].unsqueeze(dim=0))  # Greedily calculate the reward for PWIL for expert data and rewrite memory
+            if transition['terminals'] or transition['timeouts']: discriminatorOld.reset()  # Reset the expert data for PWIL
       if cfg['imitation']['mix_expert_data'] == 'prefill_memory': memory.transfer_transitions(expert_memory)  # Once rewards have been calculated, transfer expert transitions to agent replay memory
     elif cfg['defaults'][1]['algorithm'] == 'GMMIL':
       if cfg['imitation']['mix_expert_data'] == 'prefill_memory': memory.transfer_transitions(expert_memory)
@@ -1147,7 +1232,7 @@ if __name__ == '__main__':
             terminal = False
             train_return = 0
             if cfg['defaults'][1]['algorithm'] in ['GAIL', 'RED']:
-                discriminator.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
+                discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
 
             pbar = tqdm(range(1, cfg['steps'] + 1), unit_scale=1, smoothing=0)
             for step in pbar:
@@ -1160,7 +1245,7 @@ if __name__ == '__main__':
                     train_return += reward
                     if cfg['defaults'][1]['algorithm'] == 'PWIL':
                         # Greedily calculate the reward for PWIL
-                        reward = discriminator.compute_reward(state, action)
+                        reward = discriminatorOld.compute_reward(state, action)
                     memory.append(step, state, action, reward, next_state, terminal and t != max_episode_steps, t == max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal (store as timeout)
                     state = next_state
 
@@ -1170,7 +1255,7 @@ if __name__ == '__main__':
                     if cfg['imitation']['absorbing'] and t != max_episode_steps:
                         memory.wrap_for_absorbing_states()  # Wrap for absorbing state if terminated without time limit
                     if cfg['defaults'][1]['algorithm'] == 'PWIL':
-                        discriminator.reset()  # Reset the expert data for PWIL
+                        discriminatorOld.reset()  # Reset the expert data for PWIL
                     # Store metrics and reset environment
                     metrics['train_steps'].append(step)
                     metrics['train_returns'].append([train_return])
@@ -1187,9 +1272,9 @@ if __name__ == '__main__':
                   if cfg['defaults'][1]['algorithm'] in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED']:  # Note that PWIL predicts and stores rewards online during environment interaction
                     # Train discriminator
                     if cfg['defaults'][1]['algorithm'] == 'GAIL':
-                      discriminator.train()
-                      adversarial_imitation_update(actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg['imitation'])
-                      discriminator.eval()
+                      discriminatorOld.train()
+                      adversarial_imitation_update(actor, discriminatorOld, transitions, expert_transitions, discriminator_optimiser, cfg['imitation'])
+                      discriminatorOld.eval()
 
                     # Optionally, mix expert data into agent data for training
                     if cfg['imitation']['mix_expert_data'] == 'mixed_batch' and cfg['defaults'][1]['algorithm'] != 'AdRIL':
@@ -1212,17 +1297,17 @@ if __name__ == '__main__':
                     with torch.inference_mode():
                       if cfg['defaults'][1]['algorithm'] == 'AdRIL':
                         # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
-                        discriminator.resample_and_relabel(transitions, expert_transitions, step, memory.num_trajectories, expert_memory.num_trajectories)  
+                        discriminatorOld.resample_and_relabel(transitions, expert_transitions, step, memory.num_trajectories, expert_memory.num_trajectories)  
                       elif cfg['defaults'][1]['algorithm'] == 'DRIL':
-                        transitions['rewards'] = discriminator.predict_reward(states, actions)
+                        transitions['rewards'] = discriminatorOld.predict_reward(states, actions)
                       elif cfg['defaults'][1]['algorithm'] == 'GAIL':
-                        transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor,
+                        transitions['rewards'] = discriminatorOld.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor,
                                                                                                 cfg['imitation']['discriminator']['reward_shaping'],
                                                                                                 cfg['imitation']['discriminator']['subtract_log_policy']))
                       elif cfg['defaults'][1]['algorithm'] == 'GMMIL':
-                        transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
+                        transitions['rewards'] = discriminatorOld.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
                       elif cfg['defaults'][1]['algorithm'] == 'RED':
-                        transitions['rewards'] = discriminator.predict_reward(states, actions)
+                        transitions['rewards'] = discriminatorOld.predict_reward(states, actions)
 
                   # Perform a behavioural cloning update (optional)
                   if cfg['imitation']['bc_aux_loss']:
@@ -1280,7 +1365,7 @@ if __name__ == '__main__':
             
             torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f'{file_prefix}agent.pth')
             if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
-                torch.save(discriminator.state_dict(), f'{file_prefix}discriminator.pth')
+                torch.save(discriminatorOld.state_dict(), f'{file_prefix}discriminator.pth')
             torch.save(metrics, f'{file_prefix}metrics.pth')
             np.save(f'{file_prefix}old_score.npy', score)
             score = np.mean(score)
