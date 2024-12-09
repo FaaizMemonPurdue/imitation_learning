@@ -244,7 +244,6 @@ class GazeboEnv(Node):
         self.TIME_DELTA = 0.2
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
         self.timeouts = False
-        self.obs = np.zeros(22)
         self.next_obs = np.zeros(22)
         self.state_reset = np.zeros(22)
         self.goal_x = 1.8
