@@ -1032,7 +1032,7 @@ if __name__ == '__main__':
 
     # Load expert trajectories dataset
     expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
-    state_size = 23
+    state_size = 24
     action_size = 3
     max_episode_steps = 100
 

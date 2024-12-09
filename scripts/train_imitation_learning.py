@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 lstamp = 152840 #lstick
-rstamp = "000000" #rstick
+rstamp = "235328" #rstick
 left = False
 if left:
     stamp = lstamp
@@ -1033,7 +1033,7 @@ if __name__ == '__main__':
 
     # Load expert trajectories dataset
     expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
-    state_size = 23 # this already had 23 which is weird
+    state_size = 24 # this already had 23 which is weird
     action_size = 3
     max_episode_steps = 100
     file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
