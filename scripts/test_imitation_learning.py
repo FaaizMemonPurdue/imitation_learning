@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-fail_fast = True
+fail_fast = False
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan

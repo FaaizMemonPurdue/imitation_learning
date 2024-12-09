@@ -18,7 +18,7 @@ import h5py
 import os
 import datetime
 stamp = datetime.datetime.now().strftime("%H%M%S")
-fail_fast = True
+fail_fast = False
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)

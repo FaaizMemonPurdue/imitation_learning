@@ -6,7 +6,7 @@ if left:
     stamp = lstamp
 else:
     stamp = rstamp
-fail_fast = True
+fail_fast = False
 watch_actions = True
 import rclpy
 from rclpy.node import Node
