@@ -255,8 +255,8 @@ class GazeboEnv(Node):
 
         self.TIME_DELTA = 0.2
         self.timeouts = False
-        self.next_obs = np.zeros(22)
-        self.state_reset = np.zeros(22)
+        self.next_obs = np.zeros(23)
+        self.state_reset = np.zeros(23)
         self.goal_x = 1.8
         self.goal_y = -1.8
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
@@ -303,6 +303,7 @@ class GazeboEnv(Node):
         self.next_obs[:20] = copy.copy(lidar_data)
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
+        self.next_obs[22] = step
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
@@ -827,7 +828,7 @@ class GazeboEnv(Node):
         self.state_reset [:20] = copy.copy(lidar_data)
         self.state_reset [20] = robot_pose[0] - self.goal_x
         self.state_reset [21] = robot_pose[1] - self.goal_y
-
+        self.state_reset[22] = 0 # time restart
         state  = torch.tensor(self.state_reset , dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             state  = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
@@ -1032,7 +1033,7 @@ if __name__ == '__main__':
 
     # Load expert trajectories dataset
     expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
-    state_size = 23
+    state_size = 23 # this already had 23 which is weird
     action_size = 3
     max_episode_steps = 100
     file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'

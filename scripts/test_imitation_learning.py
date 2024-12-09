@@ -244,8 +244,8 @@ class GazeboEnv(Node):
         self.TIME_DELTA = 0.2
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
         self.timeouts = False
-        self.next_obs = np.zeros(22)
-        self.state_reset = np.zeros(22)
+        self.next_obs = np.zeros(23)
+        self.state_reset = np.zeros(23)
         self.goal_x = 1.8
         self.goal_y = -1.8
 
@@ -291,6 +291,7 @@ class GazeboEnv(Node):
         self.next_obs[:20] = copy.copy(lidar_data)
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
+        self.next_obs[22] = step
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         # reward = 1/dist
 
@@ -826,7 +827,7 @@ class GazeboEnv(Node):
         self.state_reset [:20] = copy.copy(lidar_data)
         self.state_reset [20] = robot_pose[0] - self.goal_x
         self.state_reset [21] = robot_pose[1] - self.goal_y
-
+        self.state_reset[22] = 0 # time restart
         state  = torch.tensor(self.state_reset , dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             state  = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state

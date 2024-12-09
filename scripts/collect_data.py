@@ -220,8 +220,8 @@ class GazeboEnv(Node):
         self.publisher_stepspd = self.create_publisher(Float64MultiArray, '/stepspd', 10)
         self.TIME_DELTA = 0.2
         self.timeouts = False
-        self.obs = np.zeros(22)
-        self.next_obs = np.zeros(22)
+        self.obs = np.zeros(23)
+        self.next_obs = np.zeros(23)
         self.goal_x = 1.8
         self.goal_y = -1.8
 
@@ -233,7 +233,7 @@ class GazeboEnv(Node):
         self.obs[:20] = copy.copy(lidar_data)
         self.obs[20] = robot_pose[0] - self.goal_x
         self.obs[21] = robot_pose[1] - self.goal_y
-
+        self.obs[22] = step
         self.wheel_vel1[0] = (axes[0]*math.sin(math.pi/4            ) + axes[1]*math.cos(math.pi/4            ) + self.L*axes[2])/self.Rw
         self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2) + self.L*axes[2])/self.Rw
         self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)   + self.L*axes[2])/self.Rw
@@ -264,6 +264,7 @@ class GazeboEnv(Node):
         self.next_obs[:20] = copy.copy(lidar_data)
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
+        self.next_obs[22] = step + 1
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
@@ -885,10 +886,10 @@ if __name__ == '__main__':
                                     next_state[8], next_state[9], next_state[10], next_state[11],
                                     next_state[12], next_state[13], next_state[14], next_state[15],
                                     next_state[16], next_state[17], next_state[18], next_state[19],
-                                    next_state[20], next_state[21]])
+                                    next_state[20], next_state[21], next_state[22]])
             state_list.append([state[0], state[1], state[2], state[3], state[4], state[5], state[6], state[7],
                                state[8], state[9], state[10], state[11],state[12], state[13], state[14], state[15],
-                               state[16], state[17], state[18], state[19], state[20], state[21]])
+                               state[16], state[17], state[18], state[19], state[20], state[21], state[22]])
             reward_list.append(reward)
             done_list.append(done)
             time_out_list.append(time_out)
@@ -900,13 +901,11 @@ if __name__ == '__main__':
             if not done and time_step <= max_ep_len:
                 continue
             i_episode += 1
-            done = True
             if done:
                 ep_performance = reward
                 spread_ep = [reward] * time_step
                 spread_list.extend(spread_ep)
                 done_cnt += 1
-                done_cnt = 0
                 if done_cnt % 10 == 0:
                     with h5py.File(prefix + f'training_data_{done_cnt}.hdf5', 'w') as hf:
                         hf.create_dataset('actions', data=action_list)
