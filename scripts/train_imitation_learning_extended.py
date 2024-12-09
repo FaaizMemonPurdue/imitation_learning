@@ -16,6 +16,8 @@ from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
+import math
+import Argument
 
 import math
 import threading
@@ -32,11 +34,22 @@ import os
 import yaml
 from tqdm import tqdm
 
+import torch.nn.functional as F
+
 from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, \
                    RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
 from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, lineplot
+
+from replay_memory import Memory
+from torch.autograd import Variable
+from trpo import trpo_step
+from utilsI import *
+from loss import *
+torch.utils.backcompat.broadcast_warning.enabled = True
+torch.utils.backcompat.keepdim_warning.enabled = True
+torch.set_default_tensor_type('torch.DoubleTensor')
 
 robot_pose = np.array([-1.8, 1.8], float)
 axes = np.array([0,0,0], float)
