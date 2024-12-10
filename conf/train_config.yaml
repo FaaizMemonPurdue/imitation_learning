@@ -43,7 +43,7 @@ imitation:
   trajectories: 0  # 0 to keep all trajectories; otherwise select number of trajectories
   subsample: 1  # Note that 20 was default in original GAIL implementation
   state_only: false
-  absorbing: true
+  absorbing: false
   discriminator:
     hidden_size: 64 
     depth: 1
