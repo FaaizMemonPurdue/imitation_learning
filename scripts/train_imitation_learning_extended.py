@@ -1408,6 +1408,8 @@ if __name__ == '__main__':
                 metrics['test_steps'].append(i_episode)
                 metrics['test_returns'].append(test_returns)
                 metrics['test_returns_normalized'].append(list(test_returns_normalized))
+                if i_episode % args.log_interval == 0:
+                    print('Episode {}\tAverage reward: {:.2f}\tMax reward: {:.2f}\tLoss (disc): {:.2f}'.format(i_episode, np.mean(reward_batch), max(reward_batch), disc_loss.item()))
             torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
             # torch.save(f'{file_prefix}eval_actions.pt', torch.cat(eval_actions))
             np.savez(f'{file_prefix}eval_actions.npz', *eval_actions)
