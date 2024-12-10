@@ -45,10 +45,6 @@ class GazeboEnv(Node):
         self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
         self.absorbing = absorbing
 
-        if load_data:
-            # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
-            self.dataset = self.get_dataset()
-
         #if absorbing:
         #    # Append absorbing indicator bit to state dimension (assumes 1D state space)
         #    self.observation_space = Box(low=np.concatenate([self.env.observation_space.low, np.zeros(1)]),
@@ -836,84 +832,6 @@ class GazeboEnv(Node):
         #gz_env.get_logger().info(f"robot1: {self.obs_robot1}")
 
         return state 
-    
-    def get_dataset(self, trajectories: int=0, subsample: int=1) -> ReplayMemory:
-        # Extract data
-        f = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/training_data_all.hdf5'
-        expert_data = h5py.File(f,'r')
-        states = torch.as_tensor(expert_data['observations'], dtype=torch.float32)
-        actions = torch.as_tensor(expert_data['actions'], dtype=torch.float32)
-        next_states = torch.as_tensor(expert_data['next_observations'], dtype=torch.float32)
-        terminals = torch.as_tensor(expert_data['terminals'], dtype=torch.float32)
-        timeouts = torch.as_tensor(expert_data['timeouts'], dtype=torch.float32)
-        state_size = states.size(1)
-        action_size = actions.size(1)
-        # Split into separate trajectories
-        states_list = []
-        actions_list = []
-        next_states_list = []
-        terminals_list = []
-        weights_list = []
-        timeouts_list = []
-        terminal_idxs = terminals.nonzero().flatten()
-        timeout_idxs = timeouts.nonzero().flatten()
-        ep_end_idxs = torch.sort(torch.cat([torch.tensor([-1]), terminal_idxs, timeout_idxs], dim=0))[0]
-        for i in range(len(ep_end_idxs) - 1):
-          states_list.append(states[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])
-          actions_list.append(actions[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])
-          next_states_list.append(next_states[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])
-          terminals_list.append(terminals[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])  # Only store true terminations; timeouts should not be treated as such
-          timeouts_list.append(timeouts[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])  # Store if episode terminated due to timeout
-          weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
-        # Pick number of trajectories
-        if trajectories > 0:
-          states_list = states_list[:trajectories]
-          actions_list = actions_list[:trajectories]
-          next_states_list = next_states_list[:trajectories]
-          terminals_list = terminals_list[:trajectories]
-          timeouts_list = timeouts_list[:trajectories]
-          weights_list = weights_list[:trajectories]
-        num_trajectories = len(states_list)
-        # Wrap for absorbing states
-        if self.absorbing:
-          absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
-          for i in range(len(states_list)):
-            # Append absorbing indicator (zero)
-            states_list[i] = torch.cat([states_list[i], torch.zeros(states_list[i].size(0), 1)], dim=1)
-            next_states_list[i] = torch.cat([next_states_list[i], torch.zeros(next_states_list[i].size(0), 1)], dim=1)
-            if not timeouts_list[i][-1]:  # Apply for episodes that did not terminate due to time limits
-              # Replace the final next state with the absorbing state and overwrite terminal status
-              next_states_list[i][-1] = absorbing_state
-              terminals_list[i][-1] = 0
-              weights_list[i][-1] = 1 / subsample  # Importance weight absorbing state as kept during subsampling
-              # Add absorbing state to absorbing state transition
-              states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
-              actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
-              next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
-              terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
-              timeouts_list[i] = torch.cat([timeouts_list[i], torch.zeros(1)], dim=0)
-              weights_list[i] = torch.cat([weights_list[i], torch.full((1, ), 1 / subsample)], dim=0)  # Importance weight absorbing state as kept during subsampling
-        # Subsample within trajectories
-        if subsample > 1:
-          for i in range(len(states_list)):
-            # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
-            rand_start_idx, T = np.random.choice(subsample), len(states_list[i])
-            idxs = range(rand_start_idx, T, subsample)
-            if self.absorbing:
-                # Subsample but keep absorbing state transitions
-                idxs = sorted(list(set(idxs) | set([T - 2, T - 1])))
-            states_list[i] = states_list[i][idxs]
-            actions_list[i] = actions_list[i][idxs]
-            next_states_list[i] = next_states_list[i][idxs]
-            terminals_list[i] = terminals_list[i][idxs]
-            timeouts_list[i] = timeouts_list[i][idxs]
-            weights_list[i] = weights_list[i][idxs]
-
-        transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'timeouts': torch.cat(timeouts_list, dim=0), 'weights': torch.cat(weights_list, dim=0), 'num_trajectories': num_trajectories}
-        # Pass 0 rewards to replay memory for interoperability/make sure reward information is not leaked to IL algorithm when data comes from an offline RL dataset
-        transitions['rewards'] = torch.zeros_like(transitions['terminals'])
-
-        return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)
 
 class Get_modelstate(Node):
 
@@ -1030,40 +948,12 @@ if __name__ == '__main__':
     normalization_max = 10
     normalization_min = -1
 
-    # Load expert trajectories dataset
-    expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
     state_size = 24
     action_size = 3
     max_episode_steps = 100
 
     # Set up agent
     actor = SoftActor(state_size, action_size, cfg['reinforcement']['actor'])
-    critic = TwinCritic(state_size, action_size, cfg['reinforcement']['critic'])
-    log_alpha = torch.zeros(1, requires_grad=True)
-    target_critic = create_target_network(critic)
-    entropy_target = cfg['reinforcement']['target_temperature'] * action_size  # Entropy target heuristic from SAC paper for continuous action domains
-    actor_optimiser = optim.AdamW(actor.parameters(), lr=cfg['training']['learning_rate'], weight_decay=cfg['training']['weight_decay'])
-    critic_optimiser = optim.AdamW(critic.parameters(), lr=cfg['training']['learning_rate'], weight_decay=cfg['training']['weight_decay'])
-    temperature_optimiser = optim.Adam([log_alpha], lr=cfg['training']['learning_rate'])
-    memory = ReplayMemory(cfg['memory']['size'], state_size, action_size, cfg['imitation']['absorbing'])
-
-    # Set up imitation learning components
-    gz_env.get_logger().info(f"algorithm : {cfg['defaults'][1]['algorithm']}")
-    if cfg['defaults'][1]['algorithm'] in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']:
-      if cfg['defaults'][1]['algorithm'] == 'AdRIL':
-        discriminator = RewardRelabeller(cfg['imitation']['update_freq'], cfg['imitation']['balanced'])  # Balanced sampling (switching between expert and policy data every update) is stateful
-      if cfg['defaults'][1]['algorithm'] == 'DRIL':
-        discriminator = SoftActor(state_size, action_size, cfg['imitation']['discriminator'])
-      elif cfg['defaults'][1]['algorithm'] == 'GAIL':
-        discriminator = GAILDiscriminator(state_size, action_size, cfg['imitation'], cfg['reinforcement']['discount'])
-      elif cfg['defaults'][1]['algorithm'] == 'GMMIL':
-        discriminator = GMMILDiscriminator(state_size, action_size, cfg['imitation'])
-      elif cfg['defaults'][1]['algorithm'] == 'PWIL':
-        discriminator = PWILDiscriminator(state_size, action_size, cfg['imitation'], expert_memory, max_episode_steps)
-      elif cfg['defaults'][1]['algorithm'] == 'RED':
-        discriminator = REDDiscriminator(state_size, action_size, cfg['imitation'])
-      if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
-        discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg['imitation']['learning_rate'], weight_decay=cfg['imitation']['weight_decay'])
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(gz_env)
