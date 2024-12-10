@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 lstamp = 152840 #lstick
-rstamp = "010607" #rstick
+rstamp = "131408" #rstick
 left = False
 if left:
     stamp = lstamp
@@ -1165,8 +1165,6 @@ if __name__ == '__main__':
       if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
     '''
     assert cfg['logging']['interval'] >= 0
-    normalization_max = 10
-    normalization_min = -1
 
     # Load expert trajectories dataset
     expert_memory = gz_env.get_dataset(trajectories=cfg['imitation']['trajectories'], subsample=cfg['imitation']['subsample'])
@@ -1376,6 +1374,8 @@ if __name__ == '__main__':
                   collision_list.append(eval_met['col'])
                   torch.save(trajectories, f'{file_prefix}eval_trajectories_{step}.pth')
                   test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
+                  normalization_max = 10
+                  normalization_min = -1
                   score.append(np.mean(test_returns_normalized))
                   metrics['test_steps'].append(step)
                   metrics['test_returns'].append(test_returns)
