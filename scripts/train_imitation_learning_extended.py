@@ -1335,6 +1335,7 @@ if __name__ == '__main__':
 
                         mask = 1
                         if done:
+                            gz_env.get_logger().info("terminal")
                             metrics['train_steps'].append(total_step)
                             metrics['train_returns'].append(reward_sum)
                             mask = 0
