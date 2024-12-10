@@ -1104,49 +1104,6 @@ class Lidar_subscriber(Node):
             if(lidar_data[i] > 7.465):
                 lidar_data[i] = 7.465
 
-# Evaluate agent with deterministic policy π
-def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: bool=False) -> Union[Tuple[List[List[float]], Dict[str, Tensor]], List[List[float]]]:
-  returns = []
-  trajectories = []
-  #if render:
-  #    env.render()
-  max_episode_steps = 100
-  eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
-  with torch.inference_mode():
-    for _ in range(num_episodes):
-      states = []
-      actions = []
-      rewards = []
-      state = gz_env.reset()
-      terminal = False
-      t = 0
-      while not terminal:
-          action = actor.get_greedy_action(state)  # Take greedy action
-          next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
-          t += 1
-
-          if return_trajectories:
-            states.append(state)
-            actions.append(np.squeeze(action.numpy())) # Convert to NumPy array for npz serialization jagged array
-          rewards.append(reward)
-          state = next_state
-          if terminal:
-                if timo:
-                    eval_met['timo'] += 1
-                elif collision:
-                    eval_met['col'] += 1
-                else:
-                    eval_met['suc'] += 1
-                    eval_met['ast'] += t
-      if eval_met['suc'] > 0:
-          eval_met['ast'] = eval_met['ast'] / eval_met['suc']
-      returns.append(sum(rewards))
-    #   if return_trajectories:
-    #     # Collect trajectory data (including terminal signal, which may be needed for offline learning)
-    #     terminals = torch.cat([torch.zeros(len(rewards) - 1), torch.ones(1)])
-    #     trajectories.append({'states': torch.cat(states), 'actions': torch.cat(actions), 'rewards': torch.tensor(rewards, dtype=torch.float32), 'terminals': terminals})
-  return returns, trajectories, eval_met, actions
-
 if __name__ == '__main__':
     rclpy.init(args=None)
     
