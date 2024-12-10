@@ -147,7 +147,21 @@ def expert_reward(states, actions):
     state_action = torch.Tensor(np.concatenate([states, actions], 1)).to(device)
     return -F.logsigmoid(discriminator(state_action)).cpu().detach().numpy()
 
-
+def evaluate(episode):
+    avg_reward = 0.0
+    for _ in range(args.eval_epochs):
+        state = env.reset()
+        for _ in range(10000): # Don't infinite loop while learning
+            state = torch.from_numpy(state).unsqueeze(0)
+            action, _, _ = policy_net(Variable(state))
+            action = action.data[0].numpy()
+            next_state, reward, done, _ = env.step(action)
+            avg_reward += reward
+            if done:
+                break
+            state = next_state
+    writer.log(episode, avg_reward / args.eval_epochs)
+    
 class GazeboEnv(Node):
 
     def __init__(self, absorbing: bool, load_data: bool=False):
