@@ -1184,7 +1184,7 @@ if __name__ == '__main__':
                 mem_actions = []
                 mem_mask = []
                 mem_next = []
-                while num_steps < 50:
+                while num_steps < 40:
                     state = gz_env.reset()
 
                     reward_sum = 0
