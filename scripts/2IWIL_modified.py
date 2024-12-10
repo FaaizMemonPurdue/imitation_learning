@@ -20,6 +20,10 @@ from utilsI import *
 from loss import *
 
 stamp = "131408"
+file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
+if not os.path.exists(file_prefix):
+    os.makedirs(file_prefix)
+
 """
 2IWIL: proposed method (--weight)
 GAIL (U+C): no need to specify option
@@ -67,7 +71,7 @@ def update_params(batch):
     rewards = torch.Tensor(batch.reward).to(device)
     masks = torch.Tensor(batch.mask).to(device)
     actions = torch.Tensor(np.concatenate(batch.action, 0)).to(device)
-    states = torch.Tensor(batch.state).to(device)
+    states = torch.Tensor(np.array(batch.state)).to(device)
     values = value_net(Variable(states))
 
     returns = torch.Tensor(actions.size(0),1).to(device)
@@ -284,8 +288,11 @@ for i_episode in range(args.num_epochs):
     for idx in range(len(states)):
         memory.push(states[idx][0], actions[idx], mem_mask[idx], mem_next[idx], \
                     rewards[idx][0])
-    batch = memory.sample()
-    update_params(batch)
+    batch = memory.sample() #memory only matters for batch
+    update_params(batch) #batch only matters for updating policynet with trpo
+    if i_episode % args.save_interval == 0:
+        torch.save(dict(policy=policy_net.state_dict(), disc=discriminator.state_dict()), 
+                   f'{file_prefix}agent_{i_episode}.pth')
 
     ### update discriminator ###
     actions = torch.from_numpy(np.concatenate(actions))
