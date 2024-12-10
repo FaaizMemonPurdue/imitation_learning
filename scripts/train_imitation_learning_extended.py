@@ -149,7 +149,7 @@ def evaluate(episode, num_episodes):
     returns = []
     trajectories = []
     avg_reward = 0.0
-    max_episode_steps = 50
+    max_episode_steps = 100
     eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
     for _ in range(num_episodes):
         states = []
@@ -231,7 +231,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 500
+    iters = 8000
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
