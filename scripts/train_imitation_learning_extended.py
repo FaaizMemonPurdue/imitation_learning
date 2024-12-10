@@ -149,7 +149,7 @@ def evaluate(episode, num_episodes):
     returns = []
     trajectories = []
     avg_reward = 0.0
-    max_episode_steps = 50
+    max_episode_steps = 100
     eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
     for _ in range(num_episodes):
         states = []
@@ -234,7 +234,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 500
+    iters = 25000
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
@@ -1131,7 +1131,7 @@ if __name__ == '__main__':
     # Load expert trajectories dataset
     state_size = 24 # this already had 23 which is weird
     action_size = 3
-    max_episode_steps = 50
+    max_episode_steps = 100
     with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
         f.write(str(fail_fast) + ' ' + str(left))
     # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
@@ -1184,7 +1184,7 @@ if __name__ == '__main__':
                 mem_actions = []
                 mem_mask = []
                 mem_next = []
-                while num_steps < 40:
+                while num_steps < args.batch_size:
                     state = gz_env.reset()
 
                     reward_sum = 0
