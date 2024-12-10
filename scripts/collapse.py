@@ -2,11 +2,8 @@ import h5py
 import os
 import numpy as np
 import shutil
-lstamp = 152840
-rstick = 155122
-lprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{lstamp}/'
-rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{rstick}/'
-
+stamp = "010607"
+rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
 
 def norm(prefix):
     src = prefix + 'training_data_all.hdf5'
@@ -50,5 +47,4 @@ def norm(prefix):
 #     l = h5py.File(lprefix + f'training_data_all_{suffix}.hdf5', 'r')
 #     lf = h5py.File(lprefix + 'training_data_all_normalized.hdf5', 'r')
 
-norm(lprefix)
 norm(rprefix)
