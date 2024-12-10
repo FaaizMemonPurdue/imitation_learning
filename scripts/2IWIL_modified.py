@@ -194,7 +194,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 5000
+    iters = 25000
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
