@@ -265,11 +265,9 @@ if not args.only and args.weight:
     classifier = classifier.eval()
     expert_conf = torch.sigmoid(classifier(torch.Tensor(expert_traj).to(device))).detach().cpu().numpy()
     expert_conf[:num_label, :] = label.cpu().detach().numpy()
-elif args.only and args.weight:
-    expert_traj = expert_traj[:num_label, :]
-    expert_conf = expert_conf[:num_label, :]
-    if args.noconf:
-        expert_conf = np.ones(expert_conf.shape)
+    # save the classifier
+    torch.save(classifier.state_dict(), f'{file_prefix}classifier.pth')
+
 ###################################
 Z = expert_conf.mean()
 if args.only:
