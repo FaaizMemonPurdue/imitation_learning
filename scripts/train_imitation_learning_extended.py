@@ -73,7 +73,7 @@ disc_optimizer = optim.Adam(discriminator.parameters(), args.lr)
 value_optimizer = optim.Adam(value_net.parameters(), args.vf_lr)
 
 def select_action(state):
-    state = torch.from_numpy(state).unsqueeze(0)
+    state = state.unsqueeze(0)
     action_mean, _, action_std = policy_net(Variable(state))
     action = torch.clip(torch.normal(action_mean, action_std), -1)
     return action
@@ -187,7 +187,7 @@ try:
     demo_pref = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/scripts'
     args.env = stamp
     expert_traj = np.load(demo_pref + "/{}/{}_mixture.npy".format(args.ifolder, args.env))
-    expert_conf = np.load(demo_pref + "/{}/{}_mixture_conf.npy".format(args.ifolder, args.env))
+    expert_conf = np.load(demo_pref + "/{}/{}_mixture_conf.npy".format(args.ifolder, args.env))[:, np.newaxis] # 
     expert_conf += (np.random.randn(*expert_conf.shape) * args.noise)
     expert_conf = np.clip(expert_conf, 0.0, 1.0)
 except:
@@ -229,7 +229,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 25000
+    iters = 100
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
@@ -485,7 +485,7 @@ class GazeboEnv(Node):
         #self.done = False
         #self.actions[:] = axes[:]
         #obs = copy.copy(lidar_data)
-        action = action[0].to('cpu').detach().numpy().copy()
+        action = action[0]#.to('cpu').detach().numpy().copy()
         self.get_logger().info(f"action:{action}")
         #self.get_logger().info(f"action:{action}")
 
@@ -552,7 +552,7 @@ class GazeboEnv(Node):
             timo = True
             done = True
 
-        next_obs_re = torch.tensor(self.next_obs, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
+        next_obs_re = torch.tensor(self.next_obs, dtype=torch.double).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
             next_obs_re = torch.cat([next_obs_re, torch.zeros(next_obs_re.size(0), 1)], dim=1) 
@@ -1048,7 +1048,7 @@ class GazeboEnv(Node):
         self.state_reset [20] = robot_pose[0] - self.goal_x
         self.state_reset [21] = robot_pose[1] - self.goal_y
         self.state_reset[22] = 0 # time restart
-        state  = torch.tensor(self.state_reset , dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
+        state  = torch.tensor(self.state_reset , dtype=torch.double).unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             state  = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
 
@@ -1233,7 +1233,7 @@ if __name__ == '__main__':
                 expert_pvalue = expert_conf[idx, :]
                 expert_state_action = torch.Tensor(expert_state_action).to(device)
                 expert_pvalue = torch.Tensor(expert_pvalue / Z).to(device)
-
+                print(states.shape, actions.shape)
                 state_action = torch.cat((states, actions), 1).to(device)
                 fake = discriminator(state_action)
                 real = discriminator(expert_state_action)
