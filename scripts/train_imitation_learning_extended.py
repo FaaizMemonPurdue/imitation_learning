@@ -1,15 +1,4 @@
 #!/usr/bin/python3
-lstamp = 152840 #lstick
-rstamp = "131408" #rstick
-left = False
-if left:
-    stamp = lstamp
-else:
-    stamp = rstamp
-stamp = "131408"
-file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
-if not os.path.exists(file_prefix):
-    os.makedirs(file_prefix)
 fail_fast = False
 watch_actions = True
 import rclpy
@@ -51,6 +40,19 @@ from torch.autograd import Variable
 from trpo import trpo_step
 from utilsI import *
 from loss import *
+
+lstamp = "152840" #lstick
+rstamp = "131408" #rstick
+left = False
+if left:
+    stamp = lstamp
+else:
+    stamp = rstamp
+stamp = "131408"
+file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
+if not os.path.exists(file_prefix):
+    os.makedirs(file_prefix)
+
 torch.utils.backcompat.broadcast_warning.enabled = True
 torch.utils.backcompat.keepdim_warning.enabled = True
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -192,8 +194,10 @@ def evaluate(episode, num_episodes):
 
 plabel = ''
 try:
-    expert_traj = np.load("./{}/{}_mixture.npy".format(args.ifolder, args.env))
-    expert_conf = np.load("./{}/{}_mixture_conf.npy".format(args.ifolder, args.env))
+    demo_pref = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/scripts/demonstrations'
+    args.env = stamp
+    expert_traj = np.load(demo_pref + "/{}/{}_mixture.npy".format(args.ifolder, args.env))
+    expert_conf = np.load(demo_pref + "/{}/{}_mixture_conf.npy".format(args.ifolder, args.env))
     expert_conf += (np.random.randn(*expert_conf.shape) * args.noise)
     expert_conf = np.clip(expert_conf, 0.0, 1.0)
 except:
