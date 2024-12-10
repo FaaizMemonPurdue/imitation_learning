@@ -1219,7 +1219,7 @@ if __name__ == '__main__':
                     memory.push(states[idx][0], actions[idx], mem_mask[idx], mem_next[idx], \
                                 rewards[idx][0])
                 
-                
+                batch = memory.sample()
                 # Train agent and imitation learning component
                 update_params(batch) #batch only matters for updating policynet with trpo
                 if i_episode % args.save_interval == 0:
