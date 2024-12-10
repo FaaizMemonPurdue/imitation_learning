@@ -1262,9 +1262,9 @@ if __name__ == '__main__':
                     avg_success_time.append(eval_met['ast'])
                     collision_list.append(eval_met['col'])
                     torch.save(trajectories, f'{file_prefix}eval_trajectories_{i_episode}.pth')
-                    test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
                     normalization_max = 10
                     normalization_min = -1
+                    test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
                     score.append(np.mean(test_returns_normalized))
                     metrics['test_steps'].append(i_episode)
                     metrics['test_returns'].append(test_returns)
