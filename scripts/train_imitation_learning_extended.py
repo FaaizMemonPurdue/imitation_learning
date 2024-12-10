@@ -184,7 +184,7 @@ def evaluate(episode, num_episodes):
 
 plabel = ''
 try:
-    demo_pref = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/scripts/demonstrations'
+    demo_pref = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/scripts'
     args.env = stamp
     expert_traj = np.load(demo_pref + "/{}/{}_mixture.npy".format(args.ifolder, args.env))
     expert_conf = np.load(demo_pref + "/{}/{}_mixture_conf.npy".format(args.ifolder, args.env))
