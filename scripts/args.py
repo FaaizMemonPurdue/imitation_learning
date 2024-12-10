@@ -1,10 +1,11 @@
+env = "Ant-v2"
 gamma = 0.995
 tau = 0.97
 l2_reg = 0.001
 max_kl = 0.01
 damping = 0.1
 seed = 1111
-batch_size = 5000
+batch_size = 500
 log_interval = 1
 fname = 'expert'
 num_epochs = 5000
@@ -23,3 +24,4 @@ initialization = 'orthogonal'
 traj_size = 600
 ofolder = 'log2out'
 ifolder = 'demonstrations'
+save_interval = 1
