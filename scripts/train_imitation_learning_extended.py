@@ -1236,8 +1236,8 @@ if __name__ == '__main__':
                 expert_pvalue = expert_conf[idx, :]
                 expert_state_action = torch.Tensor(expert_state_action).to(device)
                 expert_pvalue = torch.Tensor(expert_pvalue / Z).to(device)
-                gz_env.get_logger().info(states.shape, actions.shape)
-                state_action = torch.cat((states, actions)).to(device)
+                gz_env.get_logger().info(f"{states.shape}, {actions.shape}")
+                state_action = torch.cat((states, actions), 1).to(device)
                 fake = discriminator(state_action)
                 real = discriminator(expert_state_action)
 
