@@ -1239,9 +1239,8 @@ if __name__ == '__main__':
     assert cfg['bc_pretraining']['iterations'] >= 0
     assert cfg['imitation']['trajectories'] >= 0
     assert cfg['imitation']['mix_expert_data'] in ['none', 'mixed_batch', 'prefill_memory']
-    if cfg['defaults'][1]['algorithm'] == 'GAIL':
       # Technically possible, but makes the control flow for training the discriminator more complicated
-      assert cfg['imitation']['mix_expert_data'] != 'prefill_memory'
+    assert cfg['imitation']['mix_expert_data'] != 'prefill_memory'
     '''
       assert cfg.imitation.discriminator.reward_function in ['AIRL', 'FAIRL', 'GAIL']
       assert cfg.imitation.grad_penalty >= 0
@@ -1274,11 +1273,9 @@ if __name__ == '__main__':
 
     # Set up imitation learning components
     gz_env.get_logger().info(f"algorithm : {cfg['defaults'][1]['algorithm']}")
-    if cfg['defaults'][1]['algorithm'] in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']:
-      if cfg['defaults'][1]['algorithm'] == 'GAIL':
-        discriminatorOld = GAILDiscriminator(state_size, action_size, cfg['imitation'], cfg['reinforcement']['discount'])
-      if cfg['defaults'][1]['algorithm'] in ['DRIL', 'GAIL', 'RED']:
-        discriminator_optimiser = optim.AdamW(discriminatorOld.parameters(), lr=cfg['imitation']['learning_rate'], weight_decay=cfg['imitation']['weight_decay'])
+    
+    discriminatorOld = GAILDiscriminator(state_size, action_size, cfg['imitation'], cfg['reinforcement']['discount'])
+    discriminator_optimiser = optim.AdamW(discriminatorOld.parameters(), lr=cfg['imitation']['learning_rate'], weight_decay=cfg['imitation']['weight_decay'])
 
     # Metrics
     metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], test_returns_normalized=[], update_steps=[], predicted_rewards=[], alphas=[], entropies=[], Q_values=[])
@@ -1309,8 +1306,7 @@ if __name__ == '__main__':
             state = gz_env.reset()
             terminal = False
             train_return = 0
-            if cfg['defaults'][1]['algorithm'] in ['GAIL', 'RED']:
-                discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
+            discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
 
             pbar = tqdm(range(1, cfg['steps'] + 1), unit_scale=1, smoothing=0)
             for step in pbar:
@@ -1339,15 +1335,13 @@ if __name__ == '__main__':
 
                 # Train agent and imitation learning component
                 if step >= cfg['training']['start'] and step % cfg['training']['interval'] == 0:
-                  # Sample a batch of transitions
-                  transitions, expert_transitions = memory.sample(cfg['training']['batch_size']), expert_memory.sample(cfg['training']['batch_size'])
+                    # Sample a batch of transitions
+                    transitions, expert_transitions = memory.sample(cfg['training']['batch_size']), expert_memory.sample(cfg['training']['batch_size'])
 
-                  if cfg['defaults'][1]['algorithm'] in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED']:  # Note that PWIL predicts and stores rewards online during environment interaction
                     # Train discriminator
-                    if cfg['defaults'][1]['algorithm'] == 'GAIL':
-                      discriminatorOld.train()
-                      adversarial_imitation_update(actor, discriminatorOld, transitions, expert_transitions, discriminator_optimiser, cfg['imitation'])
-                      discriminatorOld.eval()
+                    discriminatorOld.train()
+                    adversarial_imitation_update(actor, discriminatorOld, transitions, expert_transitions, discriminator_optimiser, cfg['imitation'])
+                    discriminatorOld.eval()
 
                     # Predict rewards
                     states = transitions['states']
@@ -1365,19 +1359,18 @@ if __name__ == '__main__':
                     expert_weights = expert_transitions['weights']
 
                     with torch.inference_mode():
-                      if cfg['defaults'][1]['algorithm'] == 'GAIL':
                         transitions['rewards'] = discriminatorOld.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor,
                                                                                                 cfg['imitation']['discriminator']['reward_shaping'],
                                                                                                 cfg['imitation']['discriminator']['subtract_log_policy']))
 
-                  # Perform a SAC update
-                  log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions,
-                                                   actor_optimiser, critic_optimiser, temperature_optimiser,
-                                                   cfg['reinforcement']['discount'], entropy_target, cfg['reinforcement']['polyak_factor'])
-                  # Save auxiliary metrics
-                  if cfg['logging']['interval'] > 0 and step % cfg['logging']['interval'] == 0:
-                    gz_env.get_logger().info("Saving auxiliary metrics")
-                    metrics['update_steps'].append(step)
+                    # Perform a SAC update
+                    log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions,
+                                                    actor_optimiser, critic_optimiser, temperature_optimiser,
+                                                    cfg['reinforcement']['discount'], entropy_target, cfg['reinforcement']['polyak_factor'])
+                    # Save auxiliary metrics
+                    if cfg['logging']['interval'] > 0 and step % cfg['logging']['interval'] == 0:
+                        gz_env.get_logger().info("Saving auxiliary metrics")
+                        metrics['update_steps'].append(step)
 
                 # Evaluate agent and plot metrics
                 if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
