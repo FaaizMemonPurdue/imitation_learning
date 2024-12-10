@@ -140,8 +140,6 @@ def update_params(batch):
 def expert_reward(states, actions):
     states = np.concatenate(states)
     actions = np.concatenate(actions)
-    print(states.shape, actions.shape)
-    # sys.exit()
     state_action = torch.Tensor(np.concatenate([states, actions], 1)).to(device)
     return -F.logsigmoid(discriminator(state_action)).cpu().detach().numpy()
 
@@ -491,7 +489,6 @@ class GazeboEnv(Node):
         #self.actions[:] = axes[:]
         #obs = copy.copy(lidar_data)
         action = torch.Tensor(action).to('cpu').detach().numpy().copy()
-        self.get_logger().info(f"action:{action}")
         #self.get_logger().info(f"action:{action}")
 
         self.wheel_vel1[0] = (action[0]*math.sin(math.pi/4            ) + action[1]*math.cos(math.pi/4            ) + self.L*action[2])/self.Rw
