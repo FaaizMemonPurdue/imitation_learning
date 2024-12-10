@@ -79,10 +79,10 @@ class PolicyNet(nn.Module):
         # # added to ignore weight-sharring
         # self.final_value = nn.Linear(prev_size, 1)
         self.final_mean.weight.data.mul_(0.1)
-        self.final_mean.bias.data.mul_(0.0)
+        self.final_mean.bias.data.mul_(0.01)
         # initialize_weights(self.final_value, init, scale=1.0)
 
-        stdev_init = torch.zeros(1, action_dim)
+        stdev_init = torch.ones(1, action_dim)
         self.log_stdev = ch.nn.Parameter(stdev_init)
 
     def forward(self, x): 

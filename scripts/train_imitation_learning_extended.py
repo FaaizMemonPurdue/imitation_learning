@@ -74,8 +74,8 @@ value_optimizer = optim.Adam(value_net.parameters(), args.vf_lr)
 
 def select_action(state):
     state = state.unsqueeze(0)
-    action_mean, _, action_std = policy_net(Variable(state))
-    action = torch.clip(torch.normal(action_mean, action_std), -1)
+    action_mean, action_std, _ = policy_net(Variable(state))
+    action = torch.tanh(torch.normal(action_mean, action_std))
     return action
 def update_params(batch):
     rewards = torch.Tensor(batch.reward).to(device)
@@ -129,9 +129,9 @@ def update_params(batch):
     def get_kl():
         mean1, log_std1, std1 = policy_net(Variable(states.cpu()))
 
-        mean0 = Variable(mean1.data)
-        log_std0 = Variable(log_std1.data)
-        std0 = Variable(std1.data)
+        mean0 = Variable(mean1)
+        log_std0 = Variable(log_std1)
+        std0 = Variable(std1)
         kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / (2.0 * std1.pow(2)) - 0.5
         return kl.sum(1, keepdim=True)
 
@@ -149,7 +149,7 @@ def evaluate(episode, num_episodes):
     returns = []
     trajectories = []
     avg_reward = 0.0
-    max_episode_steps = 100
+    max_episode_steps = 50
     eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
     for _ in range(num_episodes):
         states = []
@@ -231,7 +231,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 8000
+    iters = 500
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
