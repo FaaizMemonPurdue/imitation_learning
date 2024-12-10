@@ -62,12 +62,6 @@ checkpoint = torch.load(agent_path)
 policy_net.load_state_dict(checkpoint['policy'])
 policy_net.eval()
 
-def select_action(state):
-    state = torch.from_numpy(state).unsqueeze(0)
-    action_mean, _, action_std = policy_net(Variable(state))
-    action = torch.normal(action_mean, action_std)
-    return action
-
 def evaluate(episode):
     avg_reward = 0.0
     for _ in range(args.eval_epochs):
