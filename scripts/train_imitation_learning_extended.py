@@ -190,6 +190,96 @@ def evaluate(episode, num_episodes):
     # writer.log(episode, avg_reward / args.eval_epochs)
     return returns, eval_met, actions
 
+plabel = ''
+try:
+    expert_traj = np.load("./{}/{}_mixture.npy".format(args.ifolder, args.env))
+    expert_conf = np.load("./{}/{}_mixture_conf.npy".format(args.ifolder, args.env))
+    expert_conf += (np.random.randn(*expert_conf.shape) * args.noise)
+    expert_conf = np.clip(expert_conf, 0.0, 1.0)
+except:
+    print('Mixture demonstrations not loaded successfully.')
+    assert False
+
+idx = np.random.choice(expert_traj.shape[0], args.traj_size, replace=False)
+expert_traj = expert_traj[idx, :]
+expert_conf = expert_conf[idx, :]
+
+
+##### semi-confidence learning #####
+num_label = int(args.prior * expert_conf.shape[0])
+
+p_idx = np.random.permutation(expert_traj.shape[0])
+expert_traj = expert_traj[p_idx, :]
+expert_conf = expert_conf[p_idx, :]
+
+if not args.only and args.weight:
+
+    labeled_traj = torch.Tensor(expert_traj[:num_label, :]).to(device)
+    unlabeled_traj = torch.Tensor(expert_traj[num_label:, :]).to(device)
+    label = torch.Tensor(expert_conf[:num_label, :]).to(device)
+
+    # classifier = Classifier(expert_traj.shape[1], 40).to(device)
+    classifier = ClassifierWithAttention(expert_traj.shape[1], 40, args.initialization).to(device)
+    optim = optim.Adam(classifier.parameters(), 3e-4, amsgrad=True)
+    
+    # Logic to check for the loss function type
+    if args.loss_type == 'cu':
+        cu_loss = CULoss(expert_conf, beta=1-args.prior, non=True) 
+    elif args.loss_type == 'attentioncu':
+        cu_loss = AttentionConfULoss(beta=1-args.prior, non=True)
+    elif args.loss_type=='confU':
+        cu_loss = ConfULoss(beta=1-args.prior, non=True)
+    
+    else:
+        assert args.loss_type in ['cu', 'attentioncu', 'confU'], f"the loss function {args.loss_type} is not valid"
+        
+    batch = min(128, labeled_traj.shape[0])
+    ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
+    iters = 25000
+    for i in range(iters):
+        l_idx = np.random.choice(labeled_traj.shape[0], batch)
+        u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
+
+        labeled = classifier(Variable(labeled_traj[l_idx, :]))
+        unlabeled = classifier(Variable(unlabeled_traj[u_idx, :]))
+        smp_conf = Variable(label[l_idx, :])
+
+        optim.zero_grad()
+
+        # handle various kind of loss
+        if args.loss_type == 'attentioncu':
+            attention_weight = classifier.get_raw_attention_weights()
+            # print(attention_weight)
+            risk = cu_loss(smp_conf, labeled, unlabeled, attention_weight)
+            risk = risk.sum()
+        else:
+            risk = cu_loss(smp_conf, labeled, unlabeled)
+        
+        # print(risk)
+        risk.backward()
+        optim.step()
+       
+        if i % 1000 == 0:
+            print('iteration: {}\tcu loss: {:.3f}'.format(i, risk.data.item()))
+
+    classifier = classifier.eval()
+    expert_conf = torch.sigmoid(classifier(torch.Tensor(expert_traj).to(device))).detach().cpu().numpy()
+    expert_conf[:num_label, :] = label.cpu().detach().numpy()
+elif args.only and args.weight:
+    expert_traj = expert_traj[:num_label, :]
+    expert_conf = expert_conf[:num_label, :]
+    if args.noconf:
+        expert_conf = np.ones(expert_conf.shape)
+###################################
+Z = expert_conf.mean()
+if args.only:
+    fname = 'olabel'
+else:
+    fname = ''
+if args.noconf:
+    fname = 'nc'
+
+writer = Writer(args.env, args.seed, args.weight, 'mixture', args.prior, args.traj_size, folder=args.ofolder, fname=fname, noise=args.noise, cutype=args.loss_type)
 
 class GazeboEnv(Node):
 
@@ -1259,7 +1349,7 @@ if __name__ == '__main__':
     collision_list = []
     try:
         while rclpy.ok():
-            
+
             # Training
             t = 0
             state = gz_env.reset()
@@ -1354,10 +1444,6 @@ if __name__ == '__main__':
                   if cfg['logging']['interval'] > 0 and step % cfg['logging']['interval'] == 0:
                     gz_env.get_logger().info("Saving auxiliary metrics")
                     metrics['update_steps'].append(step)
-                    metrics['predicted_rewards'].append(transitions['rewards'].numpy())
-                    metrics['alphas'].append(log_alpha.exp().detach().numpy())
-                    metrics['entropies'].append((-log_probs).numpy())  # Actions are sampled from the policy distribution, so "p" is already included
-                    metrics['Q_values'].append(Q_values.numpy())
 
                 # Evaluate agent and plot metrics
                 if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
