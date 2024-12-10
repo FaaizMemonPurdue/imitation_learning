@@ -83,7 +83,7 @@ value_optimizer = optim.Adam(value_net.parameters(), args.vf_lr)
 def select_action(state):
     state = torch.from_numpy(state).unsqueeze(0)
     action_mean, _, action_std = policy_net(Variable(state))
-    action = torch.normal(action_mean, action_std)
+    action = torch.clip(torch.normal(action_mean, action_std), -1)
     return action
 def update_params(batch):
     rewards = torch.Tensor(batch.reward).to(device)
@@ -168,7 +168,7 @@ def evaluate(episode, num_episodes):
         while not terminal:
             state = torch.from_numpy(state).unsqueeze(0)
             action, _, _ = policy_net(Variable(state))
-            action = action.data[0].numpy()
+            action = torch.clip(action.data[0], -1, 1).numpy()
             next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
             t += 1
             states.append(state.numpy())
@@ -1259,7 +1259,7 @@ if __name__ == '__main__':
     collision_list = []
     try:
         while rclpy.ok():
-
+            
             # Training
             t = 0
             state = gz_env.reset()
