@@ -19,21 +19,12 @@ import time
 import copy
 import torch
 from torch import optim
-from torch import Tensor
-from torch.utils.data import DataLoader
-from typing import Dict, List, Tuple, Union
-import h5py
 import os
 import yaml
 from tqdm import tqdm
 
 import torch.nn.functional as F
 
-from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, \
-                   RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
-from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
-from utils import cycle, lineplot
 from models2 import *
 from replay_memory import Memory
 from torch.autograd import Variable
