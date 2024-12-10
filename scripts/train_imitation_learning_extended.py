@@ -149,7 +149,7 @@ def evaluate(episode, num_episodes):
     returns = []
     trajectories = []
     avg_reward = 0.0
-    max_episode_steps = 100
+    max_episode_steps = 50
     eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
     for _ in range(num_episodes):
         states = []
@@ -165,7 +165,7 @@ def evaluate(episode, num_episodes):
             action = torch.clip(action.data[0], -1, 1).numpy()
             next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
             t += 1
-            states.append(state.numpy())
+            states.append(state)
             actions.append(action)
             rewards.append(reward)
             state = next_state
@@ -1131,7 +1131,7 @@ if __name__ == '__main__':
     # Load expert trajectories dataset
     state_size = 24 # this already had 23 which is weird
     action_size = 3
-    max_episode_steps = 100
+    max_episode_steps = 50
     with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
         f.write(str(fail_fast) + ' ' + str(left))
     # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
