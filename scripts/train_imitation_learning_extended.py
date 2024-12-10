@@ -231,7 +231,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 25000
+    iters = 8000
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
@@ -487,7 +487,6 @@ class GazeboEnv(Node):
         #self.done = False
         #self.actions[:] = axes[:]
         #obs = copy.copy(lidar_data)
-        print(action.shape)
         action = torch.Tensor(action).to('cpu').detach().numpy().copy()
         self.get_logger().info(f"action:{action}")
         #self.get_logger().info(f"action:{action}")
@@ -1236,7 +1235,6 @@ if __name__ == '__main__':
                 expert_pvalue = expert_conf[idx, :]
                 expert_state_action = torch.Tensor(expert_state_action).to(device)
                 expert_pvalue = torch.Tensor(expert_pvalue / Z).to(device)
-                gz_env.get_logger().info(f"{states.shape}, {actions.shape}")
                 state_action = torch.cat((states, actions), 1).to(device)
                 fake = discriminator(state_action)
                 real = discriminator(expert_state_action)
@@ -1271,8 +1269,6 @@ if __name__ == '__main__':
                     metrics['test_returns_normalized'].append(list(test_returns_normalized))
                 if i_episode % args.log_interval == 0:
                     print('Episode {}\tAverage reward: {:.2f}\tMax reward: {:.2f}\tLoss (disc): {:.2f}'.format(i_episode, np.mean(reward_batch), max(reward_batch), disc_loss.item()))
-            print(eval_actions)
-            print(f"success_list:{success_list} timeout_list:{timeout_list} avg_success_time:{avg_success_time} collision_list:{collision_list}")
             # torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
             np.save(f'{file_prefix}collect_actions.npy', collect_actions)
             # torch.save(f'{file_prefix}eval_actions.pt', torch.cat(eval_actions))
