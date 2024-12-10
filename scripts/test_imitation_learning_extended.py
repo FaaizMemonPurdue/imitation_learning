@@ -66,10 +66,10 @@ torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 policy_net = PolicyNet(num_inputs, num_actions, args.hidden_dim)
 stamp = "010607"
-file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
+train_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
 i_episode = 199
-agent_path = f'{file_prefix}agent_{i_episode}.pth'
-policy_net.load_state_dict(torch.load(agent_path))
+agent_path = f'{train_prefix}agent_{i_episode}.pth'
+policy_net.load_state_dict(torch.load(agent_path)['policy'])
 policy_net.to(device)
 policy_net.eval()
 def evaluate(episode, num_episodes):
