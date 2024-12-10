@@ -1308,8 +1308,47 @@ if __name__ == '__main__':
             train_return = 0
             discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
 
-            pbar = tqdm(range(1, cfg['steps'] + 1), unit_scale=1, smoothing=0)
+            pbar = tqdm(range(1, args.num_epochs), unit_scale=1, smoothing=0)
             for step in pbar:
+                memory = Memory()
+                num_steps = 0
+                num_episodes = 0
+                
+                reward_batch = []
+                states = []
+                actions = []
+                mem_actions = []
+                mem_mask = []
+                mem_next = []
+                while num_steps < args.batch_size:
+                    state = gz_env.reset()
+            
+
+                    reward_sum = 0
+                    for t in range(10000): # Don't infinite loop while learning
+                        action = select_action(state) # how he know what's state
+                        action = action.data[0].numpy()
+                        states.append(np.array([state]))
+                        actions.append(np.array([action]))
+                        next_state, reward, done, _, _ = gz_env.step(action, t, max_episode_steps)
+                        reward_sum += reward
+
+                        mask = 1
+                        if done:
+                            mask = 0
+
+                        mem_mask.append(mask)
+                        mem_next.append(next_state)
+
+                        if done:
+                            break
+
+                        state = next_state
+                    num_steps += (t-1)
+                    num_episodes += 1
+
+                    reward_batch.append(reward_sum)
+
                 # Collect set of transitions by running policy π in the environment
                 with torch.inference_mode():
                     action = actor(state).sample() #(1,3)
