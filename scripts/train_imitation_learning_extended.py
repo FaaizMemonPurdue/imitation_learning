@@ -42,13 +42,12 @@ from utilsI import *
 from loss import *
 
 lstamp = "152840" #lstick
-rstamp = "131408" #rstick
+rstamp = "010607" #rstick
 left = False
 if left:
     stamp = lstamp
 else:
     stamp = rstamp
-stamp = "131408"
 file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
 if not os.path.exists(file_prefix):
     os.makedirs(file_prefix)
@@ -1303,23 +1302,22 @@ if __name__ == '__main__':
                 disc_optimizer.step()
 
                 # Evaluate agent and plot metrics
-                # if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
-                  
-                gz_env.get_logger().info("Evaluation of the agent")
-                test_returns, trajectories, eval_met, actions = evaluate(i_episode, cfg['evaluation']['episodes'])
-                eval_actions.append(actions)
-                success_list.append(eval_met['suc'])
-                timeout_list.append(eval_met['timo'])
-                avg_success_time.append(eval_met['ast'])
-                collision_list.append(eval_met['col'])
-                torch.save(trajectories, f'{file_prefix}eval_trajectories_{i_episode}.pth')
-                test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
-                normalization_max = 10
-                normalization_min = -1
-                score.append(np.mean(test_returns_normalized))
-                metrics['test_steps'].append(i_episode)
-                metrics['test_returns'].append(test_returns)
-                metrics['test_returns_normalized'].append(list(test_returns_normalized))
+                if i_episode % 10 == 0:
+                    gz_env.get_logger().info("Evaluation of the agent")
+                    test_returns, trajectories, eval_met, actions = evaluate(i_episode, cfg['evaluation']['episodes'])
+                    eval_actions.append(actions)
+                    success_list.append(eval_met['suc'])
+                    timeout_list.append(eval_met['timo'])
+                    avg_success_time.append(eval_met['ast'])
+                    collision_list.append(eval_met['col'])
+                    torch.save(trajectories, f'{file_prefix}eval_trajectories_{i_episode}.pth')
+                    test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
+                    normalization_max = 10
+                    normalization_min = -1
+                    score.append(np.mean(test_returns_normalized))
+                    metrics['test_steps'].append(i_episode)
+                    metrics['test_returns'].append(test_returns)
+                    metrics['test_returns_normalized'].append(list(test_returns_normalized))
                 if i_episode % args.log_interval == 0:
                     print('Episode {}\tAverage reward: {:.2f}\tMax reward: {:.2f}\tLoss (disc): {:.2f}'.format(i_episode, np.mean(reward_batch), max(reward_batch), disc_loss.item()))
             torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
