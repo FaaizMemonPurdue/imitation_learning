@@ -149,7 +149,7 @@ def evaluate(episode, num_episodes):
     returns = []
     trajectories = []
     avg_reward = 0.0
-    max_episode_steps = 100
+    max_episode_steps = 5
     eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
     for _ in range(num_episodes):
         states = []
@@ -1253,7 +1253,7 @@ if __name__ == '__main__':
                 disc_optimizer.step()
 
                 # Evaluate agent and plot metrics
-                if i_episode % 10 == 0:
+                if i_episode % 1 == 0:
                     gz_env.get_logger().info("Evaluation of the agent")
                     test_returns, trajectories, eval_met, actions = evaluate(i_episode, cfg['evaluation']['episodes'])
                     eval_actions.append(actions)
