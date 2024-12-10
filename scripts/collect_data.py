@@ -273,7 +273,7 @@ class GazeboEnv(Node):
             done = True 
             reward = 500 
             self.get_logger().info('Goal reached!')
-        elif mind < 0.11 and step != 0: #could add collision listener but this p good
+        elif mind < 0.14 and step != 0: #could add collision listener but this p good
             reward = -30
             done = fail_fast
             self.get_logger().info('Collision!')
