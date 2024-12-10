@@ -180,6 +180,7 @@ def evaluate(episode, num_episodes):
                     eval_met['suc'] += 1
                     eval_met['ast'] += t
             avg_reward += reward
+        trajectories.append({'states': torch.cat(states), 'actions': torch.cat(actions), 'rewards': torch.tensor(rewards, dtype=torch.float32)})
         if eval_met['suc'] > 0:
             eval_met['ast'] /= eval_met['suc']
         returns.append(sum(rewards))            
