@@ -22,7 +22,7 @@ from torch import optim
 import os
 import yaml
 from tqdm import tqdm
-
+import sys
 import torch.nn.functional as F
 
 from models2 import *
@@ -140,6 +140,8 @@ def update_params(batch):
 def expert_reward(states, actions):
     states = np.concatenate(states)
     actions = np.concatenate(actions)
+    print(states.shape, actions.shape)
+    # sys.exit()
     state_action = torch.Tensor(np.concatenate([states, actions], 1)).to(device)
     return -F.logsigmoid(discriminator(state_action)).cpu().detach().numpy()
 
@@ -485,7 +487,8 @@ class GazeboEnv(Node):
         #self.done = False
         #self.actions[:] = axes[:]
         #obs = copy.copy(lidar_data)
-        action = action[0]#.to('cpu').detach().numpy().copy()
+        print(action.shape)
+        action = torch.Tensor(action).to('cpu').detach().numpy().copy()
         self.get_logger().info(f"action:{action}")
         #self.get_logger().info(f"action:{action}")
 
@@ -552,7 +555,7 @@ class GazeboEnv(Node):
             timo = True
             done = True
 
-        next_obs_re = torch.tensor(self.next_obs, dtype=torch.double).unsqueeze(dim=0)  # Add batch dimension to state
+        next_obs_re = torch.tensor(self.next_obs, dtype=torch.double)#.unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
             next_obs_re = torch.cat([next_obs_re, torch.zeros(next_obs_re.size(0), 1)], dim=1) 
@@ -1048,7 +1051,7 @@ class GazeboEnv(Node):
         self.state_reset [20] = robot_pose[0] - self.goal_x
         self.state_reset [21] = robot_pose[1] - self.goal_y
         self.state_reset[22] = 0 # time restart
-        state  = torch.tensor(self.state_reset , dtype=torch.double).unsqueeze(dim=0)  # Add batch dimension to state
+        state  = torch.tensor(self.state_reset , dtype=torch.double)#.unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             state  = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
 
@@ -1216,7 +1219,7 @@ if __name__ == '__main__':
                     memory.push(states[idx][0], actions[idx], mem_mask[idx], mem_next[idx], \
                                 rewards[idx][0])
                 
-
+                
                 # Train agent and imitation learning component
                 update_params(batch) #batch only matters for updating policynet with trpo
                 if i_episode % args.save_interval == 0:
@@ -1233,8 +1236,8 @@ if __name__ == '__main__':
                 expert_pvalue = expert_conf[idx, :]
                 expert_state_action = torch.Tensor(expert_state_action).to(device)
                 expert_pvalue = torch.Tensor(expert_pvalue / Z).to(device)
-                print(states.shape, actions.shape)
-                state_action = torch.cat((states, actions), 1).to(device)
+                gz_env.get_logger().info(states.shape, actions.shape)
+                state_action = torch.cat((states, actions)).to(device)
                 fake = discriminator(state_action)
                 real = discriminator(expert_state_action)
 
