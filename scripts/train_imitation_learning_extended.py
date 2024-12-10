@@ -1271,7 +1271,10 @@ if __name__ == '__main__':
                     metrics['test_returns_normalized'].append(list(test_returns_normalized))
                 if i_episode % args.log_interval == 0:
                     print('Episode {}\tAverage reward: {:.2f}\tMax reward: {:.2f}\tLoss (disc): {:.2f}'.format(i_episode, np.mean(reward_batch), max(reward_batch), disc_loss.item()))
-            torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
+            print(eval_actions)
+            print(f"success_list:{success_list} timeout_list:{timeout_list} avg_success_time:{avg_success_time} collision_list:{collision_list}")
+            # torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
+            np.save(f'{file_prefix}collect_actions.npy', collect_actions)
             # torch.save(f'{file_prefix}eval_actions.pt', torch.cat(eval_actions))
             np.savez(f'{file_prefix}eval_actions.npz', *eval_actions)
             gz_env.get_logger().info(f"metrics:{metrics}")
