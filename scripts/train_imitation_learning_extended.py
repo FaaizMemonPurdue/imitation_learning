@@ -1251,7 +1251,7 @@ if __name__ == '__main__':
                 disc_optimizer.step()
 
                 # Evaluate agent and plot metrics
-                if i_episode % 1 == 0:
+                if i_episode % 5 == 0:
                     gz_env.get_logger().info("Evaluation of the agent")
                     test_returns, trajectories, eval_met, actions = evaluate(i_episode, cfg['evaluation']['episodes'])
                     eval_actions.append(actions)
