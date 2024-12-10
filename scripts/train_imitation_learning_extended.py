@@ -1309,7 +1309,7 @@ if __name__ == '__main__':
             # discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
             total_step = 0
             pbar = tqdm(range(1, args.num_epochs), unit_scale=1, smoothing=0)
-            for step in pbar:
+            for i_episode in pbar:
                 memory = Memory()
                 num_steps = 0
                 num_episodes = 0
@@ -1359,62 +1359,55 @@ if __name__ == '__main__':
                 
 
                 # Train agent and imitation learning component
-                if step >= cfg['training']['start'] and step % cfg['training']['interval'] == 0:
-                    # Sample a batch of transitions
-                    transitions, expert_transitions = memory.sample(cfg['training']['batch_size']), expert_memory.sample(cfg['training']['batch_size'])
+                update_params(batch) #batch only matters for updating policynet with trpo
+                if i_episode % args.save_interval == 0:
+                    torch.save(dict(policy=policy_net.state_dict(), disc=discriminator.state_dict()), 
+                            f'{file_prefix}agent_{i_episode}.pth')
 
-                    # Train discriminator
-                    discriminatorOld.train()
-                    adversarial_imitation_update(actor, discriminatorOld, transitions, expert_transitions, discriminator_optimiser, cfg['imitation'])
-                    discriminatorOld.eval()
+                ### update discriminator ###
+                actions = torch.from_numpy(np.concatenate(actions))
+                states = torch.from_numpy(np.concatenate(states))
+                
+                idx = np.random.randint(0, expert_traj.shape[0], num_steps)
+                
+                expert_state_action = expert_traj[idx, :]
+                expert_pvalue = expert_conf[idx, :]
+                expert_state_action = torch.Tensor(expert_state_action).to(device)
+                expert_pvalue = torch.Tensor(expert_pvalue / Z).to(device)
 
-                    # Predict rewards
-                    states = transitions['states']
-                    actions = transitions['actions']
+                state_action = torch.cat((states, actions), 1).to(device)
+                fake = discriminator(state_action)
+                real = discriminator(expert_state_action)
 
-                    next_states = transitions['next_states']
-                    terminals = transitions['terminals']
-                    weights = transitions['weights']
-                    
-                    # Note that using the entire dataset is prohibitively slow in off-policy case (for relevant algorithms)
-                    expert_states = expert_transitions['states']
-                    expert_actions = expert_transitions['actions']
-                    expert_next_states = expert_transitions['next_states']
-                    expert_terminals = expert_transitions['terminals']
-                    expert_weights = expert_transitions['weights']
-
-                    with torch.inference_mode():
-                        transitions['rewards'] = discriminatorOld.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor,
-                                                                                                cfg['imitation']['discriminator']['reward_shaping'],
-                                                                                                cfg['imitation']['discriminator']['subtract_log_policy']))
-
-                    # Perform a SAC update
-                    log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions,
-                                                    actor_optimiser, critic_optimiser, temperature_optimiser,
-                                                    cfg['reinforcement']['discount'], entropy_target, cfg['reinforcement']['polyak_factor'])
-                    # Save auxiliary metrics
-                    if cfg['logging']['interval'] > 0 and step % cfg['logging']['interval'] == 0:
-                        gz_env.get_logger().info("Saving auxiliary metrics")
-                        metrics['update_steps'].append(step)
+                disc_optimizer.zero_grad()
+                weighted_loss = nn.BCEWithLogitsLoss(weight=expert_pvalue)
+                if args.weight:
+                    disc_loss = disc_criterion(fake, torch.ones(states.shape[0], 1).to(device)) + \
+                                weighted_loss(real, torch.zeros(expert_state_action.size(0), 1).to(device))
+                else:
+                    disc_loss = disc_criterion(fake, torch.ones(states.shape[0], 1).to(device)) + \
+                                disc_criterion(real, torch.zeros(expert_state_action.size(0), 1).to(device))
+                disc_loss.backward()
+                disc_optimizer.step()
 
                 # Evaluate agent and plot metrics
-                if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
+                # if step % cfg['evaluation']['interval'] == 0 and not cfg['check_time_usage']:
                   
-                  gz_env.get_logger().info("Evaluation of the agent")
-                  test_returns, trajectories, eval_met, actions = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True)
-                  eval_actions.append(actions)
-                  success_list.append(eval_met['suc'])
-                  timeout_list.append(eval_met['timo'])
-                  avg_success_time.append(eval_met['ast'])
-                  collision_list.append(eval_met['col'])
-                  torch.save(trajectories, f'{file_prefix}eval_trajectories_{step}.pth')
-                  test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
-                  normalization_max = 10
-                  normalization_min = -1
-                  score.append(np.mean(test_returns_normalized))
-                  metrics['test_steps'].append(step)
-                  metrics['test_returns'].append(test_returns)
-                  metrics['test_returns_normalized'].append(list(test_returns_normalized))
+                gz_env.get_logger().info("Evaluation of the agent")
+                test_returns, trajectories, eval_met, actions = evaluate_agent(actor, cfg['evaluation']['episodes'], return_trajectories=True)
+                eval_actions.append(actions)
+                success_list.append(eval_met['suc'])
+                timeout_list.append(eval_met['timo'])
+                avg_success_time.append(eval_met['ast'])
+                collision_list.append(eval_met['col'])
+                torch.save(trajectories, f'{file_prefix}eval_trajectories_{i_episode}.pth')
+                test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
+                normalization_max = 10
+                normalization_min = -1
+                score.append(np.mean(test_returns_normalized))
+                metrics['test_steps'].append(i_episode)
+                metrics['test_returns'].append(test_returns)
+                metrics['test_returns_normalized'].append(list(test_returns_normalized))
             torch.save(torch.cat(collect_actions), f'{file_prefix}collect_actions.pt')
             # torch.save(f'{file_prefix}eval_actions.pt', torch.cat(eval_actions))
             np.savez(f'{file_prefix}eval_actions.npz', *eval_actions)
