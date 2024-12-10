@@ -160,7 +160,7 @@ def evaluate(episode, num_episodes):
         t = 0
         # for _ in range(10000): # Don't infinite loop while learning
         while not terminal:
-            state = torch.from_numpy(state).unsqueeze(0)
+            state = state.unsqueeze(0)
             action, _, _ = policy_net(Variable(state))
             action = torch.clip(action.data[0], -1, 1).numpy()
             next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
