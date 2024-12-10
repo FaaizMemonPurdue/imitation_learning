@@ -6,6 +6,10 @@ if left:
     stamp = lstamp
 else:
     stamp = rstamp
+stamp = "131408"
+file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
+if not os.path.exists(file_prefix):
+    os.makedirs(file_prefix)
 fail_fast = False
 watch_actions = True
 import rclpy
@@ -85,7 +89,7 @@ def update_params(batch):
     rewards = torch.Tensor(batch.reward).to(device)
     masks = torch.Tensor(batch.mask).to(device)
     actions = torch.Tensor(np.concatenate(batch.action, 0)).to(device)
-    states = torch.Tensor(batch.state).to(device)
+    states = torch.Tensor(np.array(batch.state)).to(device)
     values = value_net(Variable(states))
 
     returns = torch.Tensor(actions.size(0),1).to(device)
@@ -1167,9 +1171,6 @@ if __name__ == '__main__':
     state_size = 24 # this already had 23 which is weird
     action_size = 3
     max_episode_steps = 100
-    file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
-    if not os.path.exists(file_prefix):
-        os.makedirs(file_prefix)
     with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
         f.write(str(fail_fast) + ' ' + str(left))
     # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
