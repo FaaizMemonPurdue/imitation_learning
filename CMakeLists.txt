@@ -63,6 +63,7 @@ install(
   scripts/utilsI.py
   scripts/running_state.py
   scripts/models2.py
+  scripts/test_imitation_learning_extended.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
