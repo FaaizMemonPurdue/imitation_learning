@@ -1126,7 +1126,7 @@ if __name__ == '__main__':
     # Load expert trajectories dataset
     state_size = 24 # this already had 23 which is weird
     action_size = 3
-    max_episode_steps = 100
+    max_episode_steps = 10
     with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
         f.write(str(fail_fast) + ' ' + str(left))
     # with open(f'{file_prefix}_algo_{cfg['defaults'][1]['algorithm']}', 'w') as f:
