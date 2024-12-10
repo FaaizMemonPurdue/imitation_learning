@@ -147,21 +147,46 @@ def expert_reward(states, actions):
     state_action = torch.Tensor(np.concatenate([states, actions], 1)).to(device)
     return -F.logsigmoid(discriminator(state_action)).cpu().detach().numpy()
 
-def evaluate(episode):
+def evaluate(episode, num_episodes):
+    returns = []
+    trajectories = []
     avg_reward = 0.0
-    for _ in range(args.eval_epochs):
-        state = env.reset()
-        for _ in range(10000): # Don't infinite loop while learning
+    max_episode_steps = 100
+    eval_met = {'suc': 0, 'timo': 0, 'ast': np.nan, 'col': 0}
+    for _ in range(num_episodes):
+        states = []
+        actions = []
+        rewards = []
+        terminal = False
+        state = gz_env.reset()
+        t = 0
+        # for _ in range(10000): # Don't infinite loop while learning
+        while not terminal:
             state = torch.from_numpy(state).unsqueeze(0)
             action, _, _ = policy_net(Variable(state))
             action = action.data[0].numpy()
-            next_state, reward, done, _ = env.step(action)
-            avg_reward += reward
-            if done:
-                break
+            next_state, reward, terminal, collision, timo = gz_env.step(action, t, max_episode_steps)
+            t += 1
+            states.append(state.numpy())
+            actions.append(action)
+            rewards.append(reward)
             state = next_state
-    writer.log(episode, avg_reward / args.eval_epochs)
-    
+            if terminal:
+                if timo:
+                    eval_met['timo'] += 1
+                elif collision:
+                    eval_met['col'] += 1
+                else:
+                    eval_met['suc'] += 1
+                    eval_met['ast'] += t
+            avg_reward += reward
+        if eval_met['suc'] > 0:
+            eval_met['ast'] /= eval_met['suc']
+        returns.append(sum(rewards))            
+    # writer.log(episode, avg_reward / args.eval_epochs)
+    return returns, eval_met, actions
+
+
 class GazeboEnv(Node):
 
     def __init__(self, absorbing: bool, load_data: bool=False):
