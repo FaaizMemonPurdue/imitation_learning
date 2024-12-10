@@ -194,10 +194,6 @@ class GazeboEnv(Node):
         self.set_parameters([Parameter('use_sim_time', Parameter.Type.BOOL, True)])
         self.absorbing = absorbing
 
-        if load_data:
-            # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
-            self.dataset = self.get_dataset()
-
         #if absorbing:
         #    # Append absorbing indicator bit to state dimension (assumes 1D state space)
         #    self.observation_space = Box(low=np.concatenate([self.env.observation_space.low, np.zeros(1)]),
