@@ -74,7 +74,7 @@ value_optimizer = optim.Adam(value_net.parameters(), args.vf_lr)
 
 def select_action(state):
     state = state.unsqueeze(0)
-    action_mean, action_std, _ = policy_net(Variable(state))
+    action_mean, _, action_std = policy_net(Variable(state))
     action = torch.tanh(torch.normal(action_mean, action_std))
     return action
 def update_params(batch):
@@ -129,9 +129,9 @@ def update_params(batch):
     def get_kl():
         mean1, log_std1, std1 = policy_net(Variable(states.cpu()))
 
-        mean0 = Variable(mean1)
-        log_std0 = Variable(log_std1)
-        std0 = Variable(std1)
+        mean0 = Variable(mean1.data)
+        log_std0 = Variable(log_std1.data)
+        std0 = Variable(std1.data)
         kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / (2.0 * std1.pow(2)) - 0.5
         return kl.sum(1, keepdim=True)
 

@@ -97,7 +97,7 @@ class PolicyNet(nn.Module):
         log_stdev = self.log_stdev.expand_as(action_means)
         action_std = ch.exp(log_stdev)
         action_means = torch.clip(action_means, -1, 1) 
-        return action_means, action_std, log_stdev
+        return action_means, log_stdev, action_std
 
 ############################################
 # Generic Value network, Value network MLP  #
