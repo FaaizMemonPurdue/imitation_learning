@@ -39,6 +39,9 @@ install(
   DESTINATION
     share/${PROJECT_NAME}/
 )
+file(GLOB POLICY_GRADIENT_SCRIPTS
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/policy_gradients/*.py"
+)
 
 install(
   PROGRAMS
@@ -51,7 +54,19 @@ install(
   scripts/training.py
   scripts/utils.py
   launch/imitation_learning.launch.py
+
+  scripts/train_imitation_learning_extended.py
+  scripts/args.py
+  scripts/loss.py
+  scripts/replay_memory.py
+  scripts/trpo.py
+  scripts/utilsI.py
+  scripts/running_state.py
+  scripts/models2.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS ${POLICY_GRADIENT_SCRIPTS}
+    DESTINATION lib/${PROJECT_NAME}/policy_gradients
+)
 ament_package()
