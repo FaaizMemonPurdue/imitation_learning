@@ -1303,11 +1303,11 @@ if __name__ == '__main__':
 
             # Training
             t = 0
-            state = gz_env.reset()
-            terminal = False
-            train_return = 0
-            discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
-
+            # state = gz_env.reset()
+            # terminal = False
+            # train_return = 0
+            # discriminatorOld.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
+            total_step = 0
             pbar = tqdm(range(1, args.num_epochs), unit_scale=1, smoothing=0)
             for step in pbar:
                 memory = Memory()
@@ -1322,7 +1322,6 @@ if __name__ == '__main__':
                 mem_next = []
                 while num_steps < args.batch_size:
                     state = gz_env.reset()
-            
 
                     reward_sum = 0
                     for t in range(max_episode_steps+1): # not going past this anyways
@@ -1336,6 +1335,8 @@ if __name__ == '__main__':
 
                         mask = 1
                         if done:
+                            metrics['train_steps'].append(total_step)
+                            metrics['train_returns'].append(reward_sum)
                             mask = 0
 
                         mem_mask.append(mask)
@@ -1345,6 +1346,7 @@ if __name__ == '__main__':
                             break
 
                         state = next_state
+                        total_step += 1
                     num_steps += (t-1)
                     num_episodes += 1
 
@@ -1353,19 +1355,7 @@ if __name__ == '__main__':
                 for idx in range(len(states)):
                     memory.push(states[idx][0], actions[idx], mem_mask[idx], mem_next[idx], \
                                 rewards[idx][0])
-
-                # Reset environment and track metrics on episode termination
-                if terminal:  # If terminal (or timed out)
-                    gz_env.get_logger().info("terminal")
-                    if cfg['imitation']['absorbing'] and t != max_episode_steps:
-                        memory.wrap_for_absorbing_states()  # Wrap for absorbing state if terminated without time limit
-                    # Store metrics and reset environment
-                    metrics['train_steps'].append(step)
-                    metrics['train_returns'].append([train_return])
-                    pbar.set_description(f'Step: {step} | Return: {train_return}')
-                    t = 0
-                    state = gz_env.reset()
-                    train_return = 0
+                
 
                 # Train agent and imitation learning component
                 if step >= cfg['training']['start'] and step % cfg['training']['interval'] == 0:
