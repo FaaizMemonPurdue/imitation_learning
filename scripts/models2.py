@@ -63,13 +63,17 @@ class PolicyNet(nn.Module):
             hidden_sizes = HIDDEN_SIZES
 
         prev_size = state_dim
+        # hidden_sizes = [64, 64]
+        # first layer state_dim (23) -> hidden_sizes[0] (64)
+        # second layer hidden_sizes[0] (64) -> hidden_sizes[1] (64)
         for i in hidden_sizes:
-            lin = nn.Linear(prev_size, i)
+            lin = nn.Linear(prev_size, i) 
             # initialize_weights(lin, init)
             self.affine_layers.append(lin)
             prev_size = i
 
         self.final_mean = nn.Linear(prev_size, action_dim)
+        # final layer hidden_sizes[1] (64) -> action_dim (3)
         # initialize_weights(self.final_mean, init, scale=0.01)
 
         # # added to ignore weight-sharring
@@ -81,17 +85,18 @@ class PolicyNet(nn.Module):
         stdev_init = torch.zeros(1, action_dim)
         self.log_stdev = ch.nn.Parameter(stdev_init)
 
-    def forward(self, x):
+    def forward(self, x): 
+        '''rets mean and std of the action distribution'''
         # If the time is in the state, discard it
         # if self.time_in_state:
         #     x = x[:,:-1]
         for affine in self.affine_layers:
-            x = self.activation_fx(affine(x))
+            x = self.activation_fx(affine(x)) # activation for sure within -1, 1
         
         action_means = self.final_mean(x)
         log_stdev = self.log_stdev.expand_as(action_means)
         action_std = ch.exp(log_stdev)
-
+        action_means = torch.clip(action_means, -1, 1) 
         return action_means, action_std, log_stdev
 
 ############################################
