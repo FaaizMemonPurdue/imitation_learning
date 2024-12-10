@@ -1325,11 +1325,12 @@ if __name__ == '__main__':
             
 
                     reward_sum = 0
-                    for t in range(10000): # Don't infinite loop while learning
+                    for t in range(max_episode_steps+1): # not going past this anyways
                         action = select_action(state) # how he know what's state
                         action = action.data[0].numpy()
                         states.append(np.array([state]))
                         actions.append(np.array([action]))
+                        collect_actions.append(action)
                         next_state, reward, done, _, _ = gz_env.step(action, t, max_episode_steps)
                         reward_sum += reward
 
@@ -1348,16 +1349,10 @@ if __name__ == '__main__':
                     num_episodes += 1
 
                     reward_batch.append(reward_sum)
-
-                # Collect set of transitions by running policy π in the environment
-                with torch.inference_mode():
-                    action = actor(state).sample() #(1,3)
-                    collect_actions.append(action) # the axes in [0]
-                    next_state, reward, terminal, _, _ = gz_env.step(action, t, max_episode_steps)
-                    t += 1
-                    train_return += reward
-                    memory.append(step, state, action, reward, next_state, terminal and t != max_episode_steps, t == max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal (store as timeout)
-                    state = next_state
+                rewards = expert_reward(states, actions)
+                for idx in range(len(states)):
+                    memory.push(states[idx][0], actions[idx], mem_mask[idx], mem_next[idx], \
+                                rewards[idx][0])
 
                 # Reset environment and track metrics on episode termination
                 if terminal:  # If terminal (or timed out)
