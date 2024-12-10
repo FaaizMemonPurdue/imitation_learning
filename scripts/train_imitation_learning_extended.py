@@ -175,6 +175,8 @@ def evaluate(episode, num_episodes):
                 elif collision:
                     eval_met['col'] += 1
                 else:
+                    if np.isnan(eval_met['ast']):
+                        eval_met['ast'] = 0
                     eval_met['suc'] += 1
                     eval_met['ast'] += t
             avg_reward += reward

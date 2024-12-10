@@ -985,6 +985,8 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, return_trajectories: boo
                 elif collision:
                     eval_met['col'] += 1
                 else:
+                    if np.isnan(eval_met['ast']):
+                        eval_met['ast'] = 0
                     eval_met['suc'] += 1
                     eval_met['ast'] += t
       if eval_met['suc'] > 0:
