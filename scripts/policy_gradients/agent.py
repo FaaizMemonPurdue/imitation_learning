@@ -10,7 +10,7 @@ import gym
 from .models import *
 from .torch_utils import *
 from .steps import value_step, step_with_mode
-from .logging import *
+from .logging_pal import *
 
 from multiprocessing import Process, Queue
 from .custom_env import Env
