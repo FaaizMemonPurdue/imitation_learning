@@ -20,7 +20,7 @@ training:
   weight_decay: 0
 evaluation:
   interval: 5000
-  episodes: 1
+  episodes: 3
 logging:
   interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
 # Agent/reinforcement learning hyperparameters
