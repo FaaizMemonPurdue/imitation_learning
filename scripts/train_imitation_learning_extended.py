@@ -32,9 +32,9 @@ from trpo import trpo_step
 from utilsI import *
 from loss import *
 
-lstamp = "152840" #lstick
+lstamp = "191804" #lstick
 rstamp = "010607" #rstick
-left = False
+left = True
 if left:
     stamp = lstamp
 else:
