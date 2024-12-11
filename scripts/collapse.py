@@ -2,7 +2,7 @@ import h5py
 import os
 import numpy as np
 import shutil
-stamp = "010607"
+stamp = "062739"
 rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
 sa_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture.npy'
 co_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture_conf.npy'
