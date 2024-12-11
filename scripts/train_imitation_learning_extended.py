@@ -33,7 +33,7 @@ from utilsI import *
 from loss import *
 
 lstamp = "152840" #lstick
-rstamp = "010607" #rstick
+rstamp = "062739" #rstick
 left = False
 if left:
     stamp = lstamp
