@@ -1,6 +1,6 @@
 import numpy as np 
 
 
-a = np.load("demonstrations/HalfCheetah-v2_mixture.npy")
+a = np.load("demonstrations/191804_mixture.npy")
 
-print(a)
+print(a.shape)
