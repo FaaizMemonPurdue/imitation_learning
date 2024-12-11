@@ -167,11 +167,11 @@ def evaluate(episode, num_episodes):
             actions.append(action)
             rewards.append(reward)
             state = next_state
+            if collision:
+                    eval_met['col'] += 1
             if terminal:
                 if timo:
                     eval_met['timo'] += 1
-                elif collision:
-                    eval_met['col'] += 1
                 else:
                     if np.isnan(eval_met['ast']):
                         eval_met['ast'] = 0
@@ -232,7 +232,7 @@ if not args.only and args.weight:
         
     batch = min(128, labeled_traj.shape[0])
     ubatch = int(batch / labeled_traj.shape[0] * unlabeled_traj.shape[0]) # same fraction of unlabeled data as we pulled from labeled data
-    iters = 25000
+    iters = 8000
     for i in range(iters):
         l_idx = np.random.choice(labeled_traj.shape[0], batch)
         u_idx = np.random.choice(unlabeled_traj.shape[0], ubatch)
