@@ -8,6 +8,7 @@ from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
+import transformations as tf
 
 import math
 import threading
@@ -780,7 +781,7 @@ class GazeboEnv(Node):
         except:
             import traceback
             traceback.print_exc()
-
+I=0
 class Get_modelstate(Node):
 
     def __init__(self):
@@ -798,8 +799,17 @@ class Get_modelstate(Node):
         robot_id = data.name.index('robot_1')
         robot_pose[0] = data.pose[robot_id].position.x
         robot_pose[1] = data.pose[robot_id].position.y
-        robot_pose[2] = np.arctan2(data.pose[robot_id].orientation.z, 
-                                   data.pose[robot_id].orientation.w) * 2 # quaternion to euler yaw
+        orient = data.pose[robot_id].orientation
+        quat = [orient.x, orient.y, orient.z, orient.w]
+        
+        euler = tf.transformations.euler_from_quaternion(quat)
+        global I
+        if I % 50 == 0:
+            print(f"quat:{quat}")
+            print(f"euler:{euler}")
+        I+=1
+        robot_pose[2] = euler[2]
+        # quaternion to euler yaw
 
 class Joy_subscriber(Node):
 
