@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import sys
-stamp = "010607"
+stamp = "191804"
 
 # file_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '/'
 # eval = np.load(f'{file_prefix}eval_metrics.npz')
@@ -17,5 +17,11 @@ step = 2
 import torch
 t2_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
 traj = f'{t2_prefix}eval_trajectories_{step}.pth'
+eval_met = f'{t2_prefix}eval_metrics.npz'
+eval = np.load(eval_met)
+suc = eval['success_list']
+timo = eval['timeout_list']
+ast = eval['avg_success_time']
+col = eval['collision_list']
 trajectories = torch.load(traj)
 print(trajectories)
