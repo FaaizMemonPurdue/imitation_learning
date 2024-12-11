@@ -49,7 +49,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 # don't try ros args, hardcode for now
 
-robot_pose = np.array([-1.8, 1.8], float)
+robot_pose = np.array([-1.8, 1.8, 0], float)
 axes = np.array([0,0,0], float)
 lidar_data = np.zeros(20)
 
@@ -60,7 +60,7 @@ if(torch.cuda.is_available()):
     print("Device set to : " + str(torch.cuda.get_device_name(device)))
 else:
     print("Device set to : cpu")
-num_inputs = 23
+num_inputs = 24
 num_actions = 3
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
@@ -477,8 +477,8 @@ class GazeboEnv(Node):
 
         self.TIME_DELTA = 0.2
         self.timeouts = False
-        self.next_obs = np.zeros(23)
-        self.state_reset = np.zeros(23)
+        self.next_obs = np.zeros(24)
+        self.state_reset = np.zeros(24)
         self.goal_x = 1.8
         self.goal_y = -1.8
         self.rate = self.create_rate(1.0 / self.TIME_DELTA)
@@ -525,6 +525,7 @@ class GazeboEnv(Node):
         self.next_obs[20] = robot_pose[0] - self.goal_x
         self.next_obs[21] = robot_pose[1] - self.goal_y
         self.next_obs[22] = step
+        self.next_obs[23] = robot_pose[2]
         dist = math.sqrt((robot_pose[0] - self.goal_x)**2 + (robot_pose[1] - self.goal_y)**2)
         reward = np.exp(-dist) # e^-0.35 * 100 = 70.46 from standing next to the goal
         mind = np.amin(self.next_obs[:20])
@@ -1050,6 +1051,7 @@ class GazeboEnv(Node):
         self.state_reset [20] = robot_pose[0] - self.goal_x
         self.state_reset [21] = robot_pose[1] - self.goal_y
         self.state_reset[22] = 0 # time restart
+        self.state_reset[23] = 0 
         state  = torch.tensor(self.state_reset , dtype=torch.double)#.unsqueeze(dim=0)  # Add batch dimension to state
         if self.absorbing:
             state  = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
