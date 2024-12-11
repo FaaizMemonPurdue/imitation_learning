@@ -2,8 +2,8 @@ import h5py
 import os
 import numpy as np
 import shutil
-stamp = "010607"
-rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
+stamp = "191804"
+lprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
 sa_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture.npy'
 co_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture_conf.npy'
 
@@ -70,4 +70,4 @@ def GT2(prefix):
 #     l = h5py.File(lprefix + f'training_data_all_{suffix}.hdf5', 'r')
 #     lf = h5py.File(lprefix + 'training_data_all_normalized.hdf5', 'r')
 
-GT2(rprefix)
+GT2(lprefix)
