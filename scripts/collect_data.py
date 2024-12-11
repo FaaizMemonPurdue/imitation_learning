@@ -8,7 +8,6 @@ from gazebo_msgs.msg import EntityState, ModelStates
 from gazebo_msgs.srv import SetEntityState
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Empty
-import transformations as tf
 
 import math
 import threading
@@ -781,7 +780,27 @@ class GazeboEnv(Node):
         except:
             import traceback
             traceback.print_exc()
-I=0
+def q2y(quat):
+    quat = np.array(quat, dtype=np.float64)
+    norm = np.linalg.norm(quat)
+    if norm == 0:
+        print("quat norm is 0")
+        return 0
+    quat /= norm
+    qx, qy, qz, qw = quat
+     # Calculate yaw angle (rotation about Z-axis)
+    sin_yaw = 2.0 * (qw * qz + qx * qy)
+    cos_yaw = 1.0 - 2.0 * (qy**2 + qz**2)
+    
+    # Ensure the result is in the valid range for arctan2
+    yaw = np.arctan2(sin_yaw, cos_yaw)
+    
+    # Optionally, constrain the yaw to be within the range [-pi, pi]
+    if yaw > np.pi:
+        yaw -= 2 * np.pi
+    elif yaw < -np.pi:
+        yaw += 2 * np.pi
+    return yaw
 class Get_modelstate(Node):
 
     def __init__(self):
@@ -800,15 +819,8 @@ class Get_modelstate(Node):
         robot_pose[0] = data.pose[robot_id].position.x
         robot_pose[1] = data.pose[robot_id].position.y
         orient = data.pose[robot_id].orientation
-        quat = [orient.x, orient.y, orient.z, orient.w]
-        
-        euler = tf.transformations.euler_from_quaternion(quat)
-        global I
-        if I % 50 == 0:
-            print(f"quat:{quat}")
-            print(f"euler:{euler}")
-        I+=1
-        robot_pose[2] = euler[2]
+        yaw = q2y([orient.x, orient.y, orient.z, orient.w])
+        robot_pose[2] = yaw
         # quaternion to euler yaw
 
 class Joy_subscriber(Node):

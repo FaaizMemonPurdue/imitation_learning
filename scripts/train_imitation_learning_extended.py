@@ -1061,7 +1061,27 @@ class GazeboEnv(Node):
 
         return state 
     
-
+def q2y(quat):
+    quat = np.array(quat, dtype=np.float64)
+    norm = np.linalg.norm(quat)
+    if norm == 0:
+        print("quat norm is 0")
+        return 0
+    quat /= norm
+    qx, qy, qz, qw = quat
+     # Calculate yaw angle (rotation about Z-axis)
+    sin_yaw = 2.0 * (qw * qz + qx * qy)
+    cos_yaw = 1.0 - 2.0 * (qy**2 + qz**2)
+    
+    # Ensure the result is in the valid range for arctan2
+    yaw = np.arctan2(sin_yaw, cos_yaw)
+    
+    # Optionally, constrain the yaw to be within the range [-pi, pi]
+    if yaw > np.pi:
+        yaw -= 2 * np.pi
+    elif yaw < -np.pi:
+        yaw += 2 * np.pi
+    return yaw
 class Get_modelstate(Node):
 
     def __init__(self):
@@ -1079,7 +1099,8 @@ class Get_modelstate(Node):
         unit_sphere_id = data.name.index('robot_1')
         robot_pose[0] = data.pose[unit_sphere_id].position.x
         robot_pose[1] = data.pose[unit_sphere_id].position.y
-
+        orient = data.pose[unit_sphere_id].orientation
+        robot_pose[2] = q2y([orient.x, orient.y, orient.z, orient.w])
 class Lidar_subscriber(Node):
 
     def __init__(self):
