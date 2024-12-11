@@ -20,7 +20,7 @@ import datetime
 stamp = datetime.datetime.now().strftime("%H%M%S")
 fail_fast = False
 robot_pose = np.array([-1.8, 1.8], float)
-axes = np.array([0,0,0], float)
+axes = np.array([0,0], float)
 lidar_data = np.zeros(20)
 prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
 if not os.path.exists(prefix):
@@ -216,7 +216,7 @@ class GazeboEnv(Node):
         self.t = 0
         self.t_limit = 6000
 
-        self.actions = np.array([0,0,0], float)
+        self.actions = np.array([0,0], float)
         self.publisher_stepspd = self.create_publisher(Float64MultiArray, '/stepspd', 10)
         self.TIME_DELTA = 0.2
         self.timeouts = False
@@ -234,10 +234,10 @@ class GazeboEnv(Node):
         self.obs[20] = robot_pose[0] - self.goal_x
         self.obs[21] = robot_pose[1] - self.goal_y
         self.obs[22] = step
-        self.wheel_vel1[0] = (axes[0]*math.sin(math.pi/4            ) + axes[1]*math.cos(math.pi/4            ) + self.L*axes[2])/self.Rw
-        self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2) + self.L*axes[2])/self.Rw
-        self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)   + self.L*axes[2])/self.Rw
-        self.wheel_vel1[3] = (axes[0]*math.sin(math.pi/4 - math.pi/2) + axes[1]*math.cos(math.pi/4 - math.pi/2) + self.L*axes[2])/self.Rw
+        self.wheel_vel1[0] = (axes[0]*math.sin(math.pi/4            ) + axes[1]*math.cos(math.pi/4            ))/self.Rw
+        self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2))/self.Rw
+        self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)  )/self.Rw
+        self.wheel_vel1[3] = (axes[0]*math.sin(math.pi/4 - math.pi/2) + axes[1]*math.cos(math.pi/4 - math.pi/2))/self.Rw
         print(f"vel1: {self.wheel_vel1[0]}, {self.wheel_vel1[1]}, {self.wheel_vel1[2]}, {self.wheel_vel1[3]}")
         array_forPublish1_vel = Float64MultiArray(data=self.wheel_vel1)  
         self.publisher_robot_vel1.publish(array_forPublish1_vel)
@@ -811,9 +811,7 @@ class Joy_subscriber(Node):
         global axes
 
         axes[0] = -data.axes[0]
-        axes[1] = -data.axes[1] 
-        axes[2] = -data.axes[3]
-    
+        axes[1] = -data.axes[1]    
 
 class Lidar_subscriber(Node):
 
@@ -844,7 +842,7 @@ if __name__ == '__main__':
 
     # state space dimension
     state_dim = 20
-    action_dim = 3
+    action_dim = 2
     total_demo_episodes = 50
     max_ep_len = 100
 
@@ -880,7 +878,7 @@ if __name__ == '__main__':
 
             action, next_state, state, reward, done, time_out, dist, reltime, collision = gz_env.step(time_step, max_ep_len)
             gz_env.get_logger().info(f"action:{action}")
-            action_list.append([action[0], action[1], action[2]])
+            action_list.append([action[0], action[1]])
             next_state_list.append([next_state[0], next_state[1], next_state[2], next_state[3],
                                     next_state[4], next_state[5], next_state[6], next_state[7],
                                     next_state[8], next_state[9], next_state[10], next_state[11],

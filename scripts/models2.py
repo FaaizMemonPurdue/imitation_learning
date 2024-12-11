@@ -73,7 +73,7 @@ class PolicyNet(nn.Module):
             prev_size = i
 
         self.final_mean = nn.Linear(prev_size, action_dim)
-        # final layer hidden_sizes[1] (64) -> action_dim (3)
+        # final layer hidden_sizes[1] (64) -> action_dim (2)
         # initialize_weights(self.final_mean, init, scale=0.01)
 
         # # added to ignore weight-sharring

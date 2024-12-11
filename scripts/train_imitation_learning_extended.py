@@ -50,7 +50,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 # don't try ros args, hardcode for now
 
 robot_pose = np.array([-1.8, 1.8], float)
-axes = np.array([0,0,0], float)
+axes = np.array([0,0], float)
 lidar_data = np.zeros(20)
 
 device = torch.device('cpu')
@@ -61,7 +61,7 @@ if(torch.cuda.is_available()):
 else:
     print("Device set to : cpu")
 num_inputs = 23
-num_actions = 3
+num_actions = 2
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 policy_net = PolicyNet(num_inputs, num_actions, args.hidden_dim)
@@ -491,10 +491,10 @@ class GazeboEnv(Node):
         action = torch.Tensor(action).to('cpu').detach().numpy().copy()
         #self.get_logger().info(f"action:{action}")
 
-        self.wheel_vel1[0] = (action[0]*math.sin(math.pi/4            ) + action[1]*math.cos(math.pi/4            ) + self.L*action[2])/self.Rw
-        self.wheel_vel1[1] = (action[0]*math.sin(math.pi/4 + math.pi/2) + action[1]*math.cos(math.pi/4 + math.pi/2) + self.L*action[2])/self.Rw
-        self.wheel_vel1[2] = (action[0]*math.sin(math.pi/4 - math.pi)   + action[1]*math.cos(math.pi/4 - math.pi)   + self.L*action[2])/self.Rw
-        self.wheel_vel1[3] = (action[0]*math.sin(math.pi/4 - math.pi/2) + action[1]*math.cos(math.pi/4 - math.pi/2) + self.L*action[2])/self.Rw
+        self.wheel_vel1[0] = (action[0]*math.sin(math.pi/4            ) + action[1]*math.cos(math.pi/4            ))/self.Rw
+        self.wheel_vel1[1] = (action[0]*math.sin(math.pi/4 + math.pi/2) + action[1]*math.cos(math.pi/4 + math.pi/2))/self.Rw
+        self.wheel_vel1[2] = (action[0]*math.sin(math.pi/4 - math.pi)   + action[1]*math.cos(math.pi/4 - math.pi)  )/self.Rw
+        self.wheel_vel1[3] = (action[0]*math.sin(math.pi/4 - math.pi/2) + action[1]*math.cos(math.pi/4 - math.pi/2))/self.Rw
     
 
         #publish robot1 commands
@@ -1127,7 +1127,7 @@ if __name__ == '__main__':
 
     # Load expert trajectories dataset
     state_size = 24 # this already had 23 which is weird
-    action_size = 3
+    action_size = 2
     max_episode_steps = 100
     with open(f'{file_prefix}fail_fast_{fail_fast}_left_{left}', 'w') as f:
         f.write(str(fail_fast) + ' ' + str(left))
