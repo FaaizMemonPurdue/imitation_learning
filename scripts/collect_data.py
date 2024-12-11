@@ -235,7 +235,6 @@ class GazeboEnv(Node):
         self.obs[21] = robot_pose[1] - self.goal_y
         self.obs[22] = step
         self.obs[23] = robot_pose[2]
-        self.get_logger().info(f"z rot: {robot_pose[2]}")
         self.wheel_vel1[0] = (axes[0]*math.sin(math.pi/4            ) + axes[1]*math.cos(math.pi/4            ) + self.L*axes[2])/self.Rw
         self.wheel_vel1[1] = (axes[0]*math.sin(math.pi/4 + math.pi/2) + axes[1]*math.cos(math.pi/4 + math.pi/2) + self.L*axes[2])/self.Rw
         self.wheel_vel1[2] = (axes[0]*math.sin(math.pi/4 - math.pi)   + axes[1]*math.cos(math.pi/4 - math.pi)   + self.L*axes[2])/self.Rw
