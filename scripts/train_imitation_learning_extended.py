@@ -167,11 +167,11 @@ def evaluate(episode, num_episodes):
             actions.append(action)
             rewards.append(reward)
             state = next_state
+            if collision:
+                eval_met['col'] += 1
             if terminal:
                 if timo:
                     eval_met['timo'] += 1
-                elif collision:
-                    eval_met['col'] += 1
                 else:
                     if np.isnan(eval_met['ast']):
                         eval_met['ast'] = 0
