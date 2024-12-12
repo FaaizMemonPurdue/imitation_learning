@@ -189,8 +189,8 @@ plabel = ''
 try:
     demo_pref = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/scripts'
     args.env = stamp
-    expert_traj = np.load(demo_pref + "/{}/{}_mixture2.npy".format(args.ifolder, args.env))
-    expert_conf = np.load(demo_pref + "/{}/{}_mixture2_conf.npy".format(args.ifolder, args.env))[:, np.newaxis] # 
+    expert_traj = np.load(demo_pref + "/{}/{}_mixture.npy".format(args.ifolder, args.env))
+    expert_conf = np.load(demo_pref + "/{}/{}_mixture_conf.npy".format(args.ifolder, args.env))[:, np.newaxis] # 
     expert_conf += (np.random.randn(*expert_conf.shape) * args.noise)
     expert_conf = np.clip(expert_conf, 0.0, 1.0)
 except:
