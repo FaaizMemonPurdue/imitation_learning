@@ -21,7 +21,24 @@ data = {
     'Collisions': np.array([931, 780, 742, 751, 683, 595, 521, 487, 402, 358]),
     'Average Success Time': np.array([np.nan, np.nan, 95, np.nan, 78, 69, 57, 61, 53, 48])
 }
-
+import numpy as np
+import os
+import sys
+# stamp = "062739" #yawaware
+# stamp = "010607" #2IWIL
+stamp = "191804" #lstick
+t2_prefix = os.environ['HOME'] + '/imitation_learning_ros/src/imitation_learning/logs/' + str(stamp) + '_2/'
+eval = np.load(f'{t2_prefix}eval_metrics.npz')
+suc = eval['success_list']
+timo = eval['timeout_list']
+ast = eval['avg_success_time']
+col = eval['collision_list']
+data = {
+    'Successes': suc,
+    'Timeouts': timo,
+    'Average Success Time': ast,
+    'Collisions': col,
+}
 x = np.arange(len(data['Successes']))
 
 fig, ax1 = plt.subplots(figsize=(12, 8))
@@ -32,7 +49,7 @@ ax1.plot(x, data['Timeouts'], 'o-', label='Timeouts', color='orange')
 ax1.set_xlabel('Evaluation Index', fontsize=14)
 ax1.set_ylabel('Successes / Timeouts', color='blue', fontsize=14)
 ax1.tick_params(axis='y', labelcolor='blue', labelsize=18)
-ax1.tick_params(axis='x', labelsize=18)
+ax1.tick_params(axis='x', labelsize=12)
 
 # Create a second y-axis for Collisions
 ax2 = ax1.twinx()
@@ -53,7 +70,7 @@ lines2, labels2 = ax2.get_legend_handles_labels()
 lines3, labels3 = ax3.get_legend_handles_labels()
 ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, fontsize=12)
 
-plt.title('Time-Aware GAIL-SAC (strafe-only demo)', fontsize=16)
+plt.title('Strafe (state-constrained) 2IWIL-TRPO', fontsize=16)
 plt.xticks(x)
 plt.grid(True)
 plt.tight_layout()

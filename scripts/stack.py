@@ -26,6 +26,6 @@ if __name__ == "__main__":
     for i in range(1, 5):
         image_paths.append(f"eval{i}.png")
     image_pacs = [os.path.join(image_folder, i) for i in image_paths]
-    output_path = os.path.join(image_folder, "output_nc.png")
+    output_path = os.path.join(image_folder, "estack.png")
     
     vertically_stack_images(image_pacs, output_path)
