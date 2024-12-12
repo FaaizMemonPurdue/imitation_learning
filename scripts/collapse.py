@@ -4,8 +4,8 @@ import numpy as np
 import shutil
 stamp = "062739"
 rprefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/data/{stamp}/'
-sa_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture.npy'
-co_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture_conf.npy'
+sa_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture2.npy'
+co_prefix = os.environ['HOME'] + f'/imitation_learning_ros/src/imitation_learning/scripts/demonstrations/{stamp}_mixture2_conf.npy'
 
 def norm(prefix):
     src = prefix + 'training_data_all.hdf5'
@@ -54,9 +54,6 @@ def GT2(prefix):
             # Perform normalization
             b_min = np.min(b)
             b = b - b_min
-            b = np.log(b + 1e-6)  # Apply logarithmic scaling
-            b_min_log = np.min(b)
-            b = b - b_min_log
             b_max = np.max(b)
             if b_max != 0:
                 b = b / b_max
